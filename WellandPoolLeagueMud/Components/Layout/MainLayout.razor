@@ -1,0 +1,86 @@
+﻿@inherits LayoutComponentBase
+@using WellandPoolLeagueMud.Components.Buttons
+
+<MudLayout>
+
+    <MudAppBar Elevation="2">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="DrawerToggle" />
+        <MudAvatar Size="Size.Medium" Variant="Variant.Filled" Color="Color.Transparent" Elevation="2">
+            <MudImage Src="Images/appicon.png" Fluid="true" />
+        </MudAvatar>
+        <MudText Typo="Typo.h5" Class="ml-3">Welland Pool League</MudText>
+        <MudSpacer />
+      <LoginButton />
+    </MudAppBar>
+    <MudDrawer id="nav-drawer" @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
+        <NavMenu />
+    </MudDrawer>
+    <MudMainContent Class="pt-16 pa-4" Style="margin-top: 20px; margin-bottom: 50px;">
+        <MudPaper Class="pa-5 ma-2" Elevation="2">
+        @Body
+        </MudPaper>
+    </MudMainContent>
+    <MudAppBar Bottom="true" Elevation="2" Dense="true">
+        <MudSpacer />
+        <MudText Typo="Typo.caption" Class="text-center">
+            &copy; 2023 Welland Pool League
+        </MudText>
+        &nbsp
+        <MudDivider DividerType="DividerType.Inset" />
+        <MudIcon Icon="@Icons.Custom.Brands.MudBlazor" />udBlazor
+        <MudSpacer />
+        </MudAppBar>
+</MudLayout>
+
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>
+
+@*Required*@
+<MudThemeProvider @ref="@provider" @bind-IsDarkMode="@useDarkMode" />
+<MudPopoverProvider />
+
+@* Needed for dialogs *@
+<MudDialogProvider />
+
+@* Needed for snackbars *@
+<MudSnackbarProvider />
+
+@code {
+
+    private bool _drawerOpen = true;
+
+    private bool useDarkMode;
+    private MudThemeProvider provider = new();
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+    }
+
+    private void DrawerToggle()
+    {
+        _drawerOpen = !_drawerOpen;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            useDarkMode = await provider.GetSystemDarkModeAsync();
+            await provider.WatchSystemDarkModeAsync(OnSystemPreferenceChanged);
+            StateHasChanged();
+        }
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    private async Task OnSystemPreferenceChanged(bool newValue)
+    {
+        useDarkMode = newValue;
+        StateHasChanged();
+        await Task.CompletedTask;
+    }
+}

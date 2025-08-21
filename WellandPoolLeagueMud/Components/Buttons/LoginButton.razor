@@ -1,0 +1,9 @@
+﻿@attribute [StreamRendering]
+<AuthorizeView>
+    <Authorized>
+        <a href="Account/Logout"><MudButton Variant="Variant.Filled" Color="Color.Warning">Log Out</MudButton></a>
+    </Authorized>
+    <NotAuthorized>
+        <a href="Account/Login"><MudButton Variant="Variant.Filled" Color="Color.Success">Log in</MudButton></a>
+    </NotAuthorized>
+</AuthorizeView>
