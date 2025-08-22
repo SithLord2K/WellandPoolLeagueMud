@@ -24,14 +24,14 @@ namespace WellandPoolLeagueMud.Data.Services
 
             var rosters = teams.SelectMany(team =>
                 players.Where(player => player.TeamId == team.Id)
-                    .Select(player => new Roster
-                    {
-                        TeamId = team.Id,
-                        TeamName = team.TeamName,
-                        Captain_Player_Id = team.Captain_Player_Id,
-                        Player_Id = player.Id,
-                        Player_Name = $"{player.FirstName} {player.LastName}"
-                    })
+                       .Select(player => new Roster
+                       {
+                           TeamId = team.Id,
+                           TeamName = team.TeamName,
+                           Captain_Player_Id = team.Captain_Player_Id,
+                           Player_Id = player.Id,
+                           Player_Name = $"{player.FirstName} {player.LastName}"
+                       })
             ).ToList();
 
             return rosters;
@@ -64,7 +64,7 @@ namespace WellandPoolLeagueMud.Data.Services
 
         public async Task<List<Schedule>> GetSchedules()
         {
-            return await dataFactory.GetSchedule();
+            return await dataFactory.GetSchedules();
         }
     }
 }

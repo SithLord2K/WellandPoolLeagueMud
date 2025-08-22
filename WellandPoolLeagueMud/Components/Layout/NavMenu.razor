@@ -1,13 +1,13 @@
 ﻿
 <MudNavMenu>
     <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
-    <MudNavLink Href="rosters" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Group">Rosters</MudNavLink>
+    <MudNavLink Href="team_rosters" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Group">Rosters</MudNavLink>
     <MudNavGroup Title="Standings" Icon="@Icons.Material.Filled.ViewList">
         <MudNavLink Href="team_standings" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.GroupWork">Team Standings</MudNavLink>
         <MudNavLink Href="player_standings" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Groups2">Player Standings</MudNavLink>
     </MudNavGroup>
     <MudNavGroup Title="Schedules" Icon="@Icons.Material.Filled.Schedule">
-        <MudNavLink Href="weekly" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Schema">Weekly</MudNavLink>
+        <MudNavLink Href="weekly_schedule" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Schema">Weekly</MudNavLink>
         <MudNavLink Href="playoff_schedule" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.DateRange">Playoffs</MudNavLink>
     </MudNavGroup>
     <AuthorizeView Roles="League_Admin, Super_User">

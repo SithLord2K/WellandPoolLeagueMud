@@ -4,12 +4,12 @@ namespace WellandPoolLeagueMud.Data.Services
 {
     public class PlayerHelpers(DataFactory dataFactory)
     {
-        private readonly DataFactory _dataFactory = dataFactory;
+        private readonly DataFactory dataFactory = dataFactory;
 
         public async Task<List<Players>> ConsolidatePlayersAsync()
         {
-            var allPlayers = await _dataFactory.GetPlayers();
-            var allPlayerData = await _dataFactory.GetAllPlayerData();
+            var allPlayers = await dataFactory.GetPlayers();
+            var allPlayerData = await dataFactory.GetAllPlayerDataAsync();
 
             if (allPlayers == null || allPlayerData == null)
             {
@@ -49,8 +49,8 @@ namespace WellandPoolLeagueMud.Data.Services
 
         public async Task<Players> GetPlayerDetails(int id)
         {
-            var playerInfo = await _dataFactory.GetSinglePlayer(id);
-            var getPlayerData = await _dataFactory.GetSinglePlayerData(id);
+            var playerInfo = await dataFactory.GetSinglePlayer(id);
+            var getPlayerData = await dataFactory.GetSinglePlayerData(id);
 
             if (playerInfo == null)
             {
@@ -72,8 +72,8 @@ namespace WellandPoolLeagueMud.Data.Services
 
         public async Task<TeamStats> GetTeamStatsAsync()
         {
-            var weekTotals = await _dataFactory.GetAllWeeks();
-            var teamTotals = await _dataFactory.GetAllPlayerData();
+            var weekTotals = await dataFactory.GetAllWeeks();
+            var teamTotals = await dataFactory.GetAllPlayerDataAsync();
 
             var teamStats = new TeamStats
             {
@@ -98,7 +98,7 @@ namespace WellandPoolLeagueMud.Data.Services
 
         public async Task<List<TeamDetail>> GetTeamDetailsAsync()
         {
-            var teamDetails = await _dataFactory.GetTeamDetails();
+            var teamDetails = await dataFactory.GetTeamDetails();
 
             if (teamDetails == null)
             {

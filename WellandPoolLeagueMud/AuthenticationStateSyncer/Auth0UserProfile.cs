@@ -81,7 +81,7 @@ namespace WellandPoolLeagueMud.AuthenticationStateSyncer
 
     public partial class Welcome6
     {
-        public static Welcome6[] FromJson(string json) => JsonConvert.DeserializeObject<Welcome6[]>(json, Converter.Settings);
+        public static Welcome6[] FromJson(string json) => JsonConvert.DeserializeObject<Welcome6[]>(json, Converter.Settings) ?? Array.Empty<Welcome6>();
     }
 
     public static class Serialize

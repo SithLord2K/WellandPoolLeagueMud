@@ -6,7 +6,7 @@ namespace WellandPoolLeagueMud.Data;
 public partial class WPLStatsDBContext : DbContext
 {
     public WPLStatsDBContext() { }
-    
+
     public WPLStatsDBContext(DbContextOptions<WPLStatsDBContext> options)
         : base(options)
     {
@@ -26,40 +26,13 @@ public partial class WPLStatsDBContext : DbContext
 
     public virtual DbSet<WeeksView> WeeksViews { get; set; }
 
-    public virtual DbSet<Changelog> Changelog { get; set; }
-
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema("wiley");
 
-        modelBuilder.Entity<Player>(entity =>
-        {
-            entity.Property(e => e.Id).ValueGeneratedOnAdd();
-        });
-
-        modelBuilder.Entity<PlayerDatum>(entity =>
-        {
-            entity.Property(e => e.PlayerId).ValueGeneratedOnAdd();
-        });
-
         modelBuilder.Entity<PlayersView>(entity =>
         {
             entity.ToView("PlayersView");
-        });
-
-        modelBuilder.Entity<Schedule>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("PK_Tmp_Schedule");
-        });
-
-        modelBuilder.Entity<TeamDetail>(entity =>
-        {
-            entity.Property(e => e.Id).ValueGeneratedOnAdd();
-        });
-
-        modelBuilder.Entity<Week>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("PK_Week");
         });
 
         modelBuilder.Entity<WeeksView>(entity =>
@@ -67,11 +40,11 @@ public partial class WPLStatsDBContext : DbContext
             entity.ToView("WeeksView");
         });
 
-        modelBuilder.Entity<Changelog>(entity =>
+        modelBuilder.Entity<Week>(entity =>
         {
-            entity.HasKey(e => e.ID).HasName("PK_Changelog");
-            entity.Property(e => e.ID).ValueGeneratedOnAdd();
+            entity.HasKey(e => e.Id).HasName("PK_Week");
         });
+
         OnModelCreatingPartial(modelBuilder);
     }
 

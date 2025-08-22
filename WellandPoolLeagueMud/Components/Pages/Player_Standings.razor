@@ -1,0 +1,75 @@
+﻿@page "/player_standings"
+@using WellandPoolLeagueMud.Data.Services
+@using WellandPoolLeagueMud.Components.Buttons
+@using MudBlazor
+@using System.Linq
+@attribute [StreamRendering]
+
+<PageTitle>Player Standings</PageTitle>
+
+@if (pData is not null)
+{
+    <MudDataGrid TItem="PDataModel"
+                 Items="@pData"
+                 Filterable="true"
+                 Sortable="true"
+                 Striped="true"
+                 Hover="true"
+                 Bordered="true"
+                 Class="pb-2">
+
+        <ToolBarContent>
+            <MudText Typo="Typo.h6">Player Standings</MudText>
+            <MudSpacer />
+            <MudTextField T="string" Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+        </ToolBarContent>
+        <Columns>
+            <PropertyColumn Property="x => x.TeamName" Title="Team" Filterable="true" />
+            <PropertyColumn Property="x => x.FirstName" Title="First Name" />
+            <PropertyColumn Property="x => x.LastName" Title="Last Name" />
+            <PropertyColumn Property="x => x.GamesPlayed" Title="Games Played" />
+            <PropertyColumn Property="x => x.GamesWon" Title="Games Won" />
+            <PropertyColumn Property="x => x.GamesLost" Title="Games Lost" />
+            <PropertyColumn Property="x => x.Average" Title="Average" Format="P2" />
+        </Columns>
+        <PagerContent>
+            <MudDataGridPager TItem="PDataModel" HideRowsPerPage="true" />
+        </PagerContent>
+        <NoRecordsContent>
+            <div class="box">
+                No Player Stats Found!
+            </div>
+        </NoRecordsContent>
+    </MudDataGrid>
+}
+
+<ScrollToTopButton />
+
+@code {
+    private readonly TeamHelper teamHelper;
+    private readonly PlayerHelpers playerHelper;
+    private readonly PDataService pDataService;
+
+    private List<TeamStats> teamStats = new();
+    private List<TeamDetail> teamDetails = new();
+    private List<Players>? playerData = new();
+    private List<PDataModel> pData = new();
+
+    public Player_Standings(TeamHelper teamHelper, PlayerHelpers playerHelpers, PDataService pDataService)
+    {
+        this.teamHelper = teamHelper;
+        this.playerHelper = playerHelpers;
+        this.pDataService = pDataService;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        teamDetails = await playerHelper.GetTeamDetailsAsync();
+        playerData = await playerHelper.ConsolidatePlayersAsync();
+        teamStats = await teamHelper.GetAllTeamStats();
+        pData = await pDataService.GetFullPlayerData();
+
+        // Optional: Pre-sort the list before rendering
+        pData = pData.OrderByDescending(x => x.Average).ToList();
+    }
+}

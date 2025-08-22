@@ -3,14 +3,14 @@ using System.Linq;
 
 namespace WellandPoolLeagueMud.Data.Services
 {
-    public class PlayerDataService
+    public class PDataService
     {
         private readonly TeamHelper _teamHelper;
         private readonly PlayerHelpers _playerHelper;
 
         private const int InactiveTeamId = 12;
 
-        public PlayerDataService(TeamHelper teamHelper, PlayerHelpers playerHelper)
+        public PDataService(TeamHelper teamHelper, PlayerHelpers playerHelper)
         {
             _teamHelper = teamHelper;
             _playerHelper = playerHelper;

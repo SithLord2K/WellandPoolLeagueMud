@@ -14,7 +14,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Add Data Services
 builder.Services.AddTransient<DataFactory>();
 builder.Services.AddTransient<WeekHelper>();
-builder.Services.AddTransient<PlayerDataService>();
+builder.Services.AddTransient<PDataService>();
 builder.Services.AddTransient<TeamHelper>();
 builder.Services.AddTransient<PlayerHelpers>();
 builder.Services.AddTransient<RosterHelper>();
@@ -23,18 +23,15 @@ builder.Services.AddDbContextFactory<WPLStatsDBContext>(options =>
 {
     options.UseSqlServer(builder.Configuration.GetConnectionString("WPLStatsDB"));
 });
-
-
+builder.Services.AddScoped<DataFactory>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
-//Add Authentication Services
 builder.Services.AddAuth0WebAppAuthentication(options =>
 {
-    options.Domain = builder.Configuration["Auth0:Domain"];
-    options.ClientId = builder.Configuration["Auth0:ClientId"];
-
+    options.Domain = builder.Configuration.GetValue<string>("Auth0:Domain")!;
+    options.ClientId = builder.Configuration.GetValue<string>("Auth0:ClientId")!;
 });
 
 //AntiForgery

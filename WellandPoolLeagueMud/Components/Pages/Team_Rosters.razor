@@ -1,0 +1,91 @@
+﻿@page "/team_rosters"
+@attribute [StreamRendering]
+@using WellandPoolLeagueMud.Components.Buttons
+@using Roster = WellandPoolLeagueMud.Data.Models.Roster
+
+<PageTitle>Team Rosters</PageTitle>
+
+@if (teams is not null)
+{
+    // Define the group definition
+    var groupDefinition = new TableGroupDefinition<Roster>()
+    {
+        GroupName = "Team",
+        Expandable = true,
+        IsInitiallyExpanded = false,
+        Selector = (e) => teams.FirstOrDefault(t => t.Id == e.TeamId)?.TeamName ?? "N/A"
+    };
+
+    <MudTable Items="@rosters.Where(r => r.TeamId != teams.FirstOrDefault(t => t.TeamName != "Bye")?.Id)"
+              GroupBy="@groupDefinition"
+              Hover="true"
+              Striped="true"
+              GroupHeaderStyle="background-color:var(--mud-palette-background-gray)"
+              Dense="false" 
+              T="Roster">
+        <ToolBarContent>
+            <MudText>Team Rosters</MudText>
+        </ToolBarContent>
+        <GroupHeaderTemplate>
+            <MudTh Class="mud-bg-info" Style="text-align:left;" colspan="4">
+                @context.GroupName: @context.Key
+            </MudTh>
+        </GroupHeaderTemplate>
+        <HeaderContent>
+            <MudTh>Team #</MudTh>
+            <MudTh>Name</MudTh>
+            <MudTh>Games Played</MudTh>
+            <MudTh>Captain?</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTh Style="text-align:center;">@context.TeamId</MudTh>
+            <MudTd Style="text-align:center;">@context.Player_Name</MudTd>
+            <MudTd Style="text-align:center;">
+                @{
+                    var playerList = players ?? Enumerable.Empty<Players>();
+                    var player = playerList.FirstOrDefault(p => p.Id == context.Player_Id);
+                    <span>@(player?.GamesPlayed ?? 0)</span>
+                }
+            </MudTd>
+            <MudTd Style="text-align:center;">
+                @if (context.Player_Id == context.Captain_Player_Id)
+                {
+                    <MudIcon Icon="@Icons.Material.Filled.Check" Color="Color.Success" />
+                }
+            </MudTd>
+        </RowTemplate>
+        <GroupFooterTemplate>
+            <MudTd Class="mud-table-cell-custom-group-footer" colspan="4" Style="font-weight: bold; text-align: right;">
+                Team Roster Size: @context.Items.Count()
+            </MudTd>
+        </GroupFooterTemplate>
+    </MudTable>
+}
+
+<ScrollToTopButton />
+
+@code {
+    
+    private List<Players>? players = [];
+    private List<TeamDetail> teams = [];
+    private List<Roster> rosters = [];
+
+    //Inject Services
+    private readonly RosterHelper rosterHelper;
+    private readonly PlayerHelpers playerHelpers;
+    private readonly DataFactory dataFactory;
+
+    public Team_Rosters(DataFactory dataFactory, RosterHelper rosterHelper, PlayerHelpers playerHelpers)
+    {
+        this.dataFactory = dataFactory;
+        this.rosterHelper = rosterHelper;
+        this.playerHelpers = playerHelpers;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        players = await playerHelpers.ConsolidatePlayersAsync();
+        teams = await dataFactory.GetTeamDetails();
+        rosters = await rosterHelper.GetRoster();
+    }
+}

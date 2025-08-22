@@ -1,0 +1,149 @@
+﻿@page "/weekly_schedule"
+@attribute [StreamRendering]
+@using Schedules = WellandPoolLeagueMud.Data.Models.Schedule
+@using WellandPoolLeagueMud.Data.Services
+@using WellandPoolLeagueMud.Components.Buttons
+@using MudBlazor
+@inject NavigationManager navigationManager
+
+<PageTitle>Schedule</PageTitle>
+
+<div class="d-flex align-center gap-4">
+
+    <MudDatePicker @ref="@datePicker"
+                             Label="Select date to jump to that week:"
+                             ShowToolbar="false"
+                             IsDateDisabledFunc="@((DateTime dt)=>((int)dt.DayOfWeek != 2))"
+                             PickerVariant="PickerVariant.Dialog"
+                             DateChanged="@(e => SelectedDate(e))"
+                             Date="selectedDate"
+                             DateFormat="MM-dd-yyyy" />
+</div>
+<br />
+
+@foreach (var day in schedules.DistinctBy(x => x.Date).Where(x => x.Playoffs == false))
+{
+    <div id="@day.Date.ToString("MM-dd-yyy")">
+        <MudCard Class="mb-4">
+            <MudCardHeader>
+                <MudText Typo="Typo.h5" Align="Align.Center" Class="m-auto">@day.Date.ToLongDateString()</MudText>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudText Typo="Typo.h6" Align="Align.Center" Class="mb-4">Week: @day.Week_Id</MudText>
+                <MudTable Items="@schedules.Where(x => x.Date == day.Date)"
+                                       Dense="true"
+                                       Hover="true"
+                                       Bordered="true"
+                                       Striped="true">
+                    <HeaderContent>
+                        <MudTh Style="width: 50px;">Win</MudTh>
+                        <MudTh>Home Team</MudTh>
+                        <MudTh></MudTh>
+                        <MudTh>Away Team</MudTh>
+                        <MudTh Style="width: 50px;">Win</MudTh>
+                        <MudTh>Table Number</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Win">
+                            <MudCheckBox T="bool" Value="HomeWinChecked(context.Week_Id, context.Home_Team).Result" Color="Color.Success" UnCheckedColor="Color.Default" ReadOnly />
+                        </MudTd>
+                        <MudTd DataLabel="Home Team">@teams.FirstOrDefault(x => x.Id == context.Home_Team)?.TeamName</MudTd>
+                        <MudTd DataLabel="" Style="text-align: center; vertical-align: middle;">vs</MudTd>
+                        <MudTd DataLabel="Away Team">@teams.FirstOrDefault(x => x.Id == context.Away_Team)?.TeamName</MudTd>
+                        <MudTd DataLabel="Win">
+                            <MudCheckBox T="bool" Value="AwayWinChecked(context.Week_Id, context.Away_Team).Result" Color="Color.Success" UnCheckedColor="Color.Default" ReadOnly />
+                        </MudTd>
+                        <MudTd DataLabel="Table Number" Style="text-align: center;">@context.Table_Number</MudTd>
+                    </RowTemplate>
+                    <NoRecordsContent>
+                        <div class="box">
+                            No games scheduled for this week.
+                        </div>
+                    </NoRecordsContent>
+                </MudTable>
+            </MudCardContent>
+        </MudCard>
+    </div>
+}
+
+<ScrollToTopButton />
+
+@code {
+    private readonly RosterHelper rosterHelper;
+    private readonly TeamHelper teamHelper;
+    private readonly WeekHelper weekHelper;
+    private readonly DataFactory aPIService;
+    private bool homeWin { get; set; }
+    private bool awayWin { get; set; }
+
+    private List<Schedules> schedules = new();
+    private List<TeamDetail> teams = new();
+    private List<TeamStats> teamStats = new();
+    private List<WeekFullInfo> weeks = new();
+    private MudDatePicker datePicker = new();
+    private DateTime? selectedDate = DateTime.Today;
+    private DateOnly? dateOnly;
+    private string onlyDate = string.Empty;
+
+    public Weekly_Schedule(RosterHelper rosterHelper, TeamHelper teamHelper, WeekHelper weekHelper, DataFactory aPIService)
+    {
+        this.rosterHelper = rosterHelper;
+        this.teamHelper = teamHelper;
+        this.weekHelper = weekHelper;
+        this.aPIService = aPIService;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        teams = await aPIService.GetTeamDetails();
+        schedules = await rosterHelper.GetSchedules();
+        teamStats = await teamHelper.GetAllTeamStats();
+        weeks = await weekHelper.GetFullWeek();
+    }
+
+    Task<bool> HomeWinChecked(int WeekId, int HomeId)
+    {
+        var homeWeek = weeks.Where(x => x.WeekNumber == WeekId && x.Home_Team == HomeId && x.WinningTeamId == HomeId).FirstOrDefault();
+        if (homeWeek == null)
+        {
+            return Task.FromResult(false);
+        }
+        if (homeWeek.WinningTeamId == HomeId)
+        {
+            return Task.FromResult(true);
+        }
+        else
+        {
+           return Task.FromResult(false);
+        }
+    }
+
+    Task<bool> AwayWinChecked(int WeekId, int AwayId)
+    {
+        var homeWeek = weeks.Where(x => x.WeekNumber == WeekId && x.Away_Team == AwayId && x.WinningTeamId == AwayId).FirstOrDefault();
+        if (homeWeek == null)
+        {
+            return Task.FromResult(false);
+        }
+        if (homeWeek.WinningTeamId == AwayId)
+        {
+            return Task.FromResult(true);
+        }
+        else
+        {
+            return Task.FromResult(false);
+        }
+    }
+
+    private void SelectedDate(DateTime? selectedDate)
+    {
+        string uri = navigationManager.Uri.ToString();
+        if (!uri.Contains("#"))
+        {
+            uri = uri + "#";
+            dateOnly = selectedDate.HasValue ? DateOnly.FromDateTime(selectedDate.Value) : (DateOnly?)null;
+            onlyDate = dateOnly.HasValue ? dateOnly.Value.ToString("MM-dd-yyyy") : string.Empty;
+        }
+        navigationManager.NavigateTo($"{uri}{onlyDate}");
+    }
+}
