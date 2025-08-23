@@ -1,57 +1,71 @@
 ﻿using WellandPoolLeagueMud.Data.Models;
-using System.Linq;
+using WellandPoolLeagueMud.Data.Services;
+using WellandPoolLeagueMud.Data.ViewModels;
 
 namespace WellandPoolLeagueMud.Data.Services
 {
-    public class PDataService
+    public class PDataService(IDataFactory dataFactory)
     {
-        private readonly TeamHelper _teamHelper;
-        private readonly PlayerHelpers _playerHelper;
-
+        // This constant should be a variable or defined in a central location.
+        // For this refactor, we will assume it's still InactiveTeamId = 12.
         private const int InactiveTeamId = 12;
 
-        public PDataService(TeamHelper teamHelper, PlayerHelpers playerHelper)
+        public async Task<List<PlayerViewModel>> GetFullPlayerDataAsync()
         {
-            _teamHelper = teamHelper;
-            _playerHelper = playerHelper;
-        }
+            // Fetch all players and teams once for efficiency
+            var allPlayers = await dataFactory.GetPlayersAsync();
+            var allTeams = await dataFactory.GetTeamsAsync();
+            var allPlayerGames = await dataFactory.GetAllPlayerGamesAsync();
 
-        public async Task<List<PDataModel>> GetFullPlayerData()
-        {
-            var teamDetails = await _playerHelper.GetTeamDetailsAsync();
-            var playerData = await _playerHelper.ConsolidatePlayersAsync();
-
-            if (teamDetails == null || playerData == null)
+            if (allPlayers == null || !allPlayers.Any() || allTeams == null)
             {
-                return new List<PDataModel>();
+                return new List<PlayerViewModel>();
             }
 
-            var teamNameLookup = teamDetails.ToDictionary(td => td.Id, td => td.TeamName);
+            // Create a lookup for team names from the new WPL_Team model
+            var teamNameLookup = allTeams.ToDictionary(t => t.TeamId, t => t.TeamName);
 
-            var pData = playerData
+            // Group player games to calculate totals
+            var playerGamesLookup = allPlayerGames.GroupBy(pg => pg.PlayerId)
+                .ToDictionary(
+                    group => group.Key,
+                    group => new
+                    {
+                        FramesWon = group.Sum(x => x.FramesWon),
+                        FramesLost = group.Sum(x => x.FramesLost)
+                    }
+                );
+
+            var fullPlayerData = allPlayers
                 .Where(player => player.TeamId != InactiveTeamId)
                 .Select(player =>
                 {
-                    decimal average = 0;
-                    if (player.GamesPlayed > 0)
-                    {
-                        average = player.GamesWon / (decimal)player.GamesPlayed;
-                    }
+                    playerGamesLookup.TryGetValue(player.PlayerId, out var totals);
 
-                    return new PDataModel
+                    int framesWon = totals?.FramesWon ?? 0;
+                    int framesLost = totals?.FramesLost ?? 0;
+                    int gamesPlayed = framesWon + framesLost;
+                    decimal average = gamesPlayed > 0 ? (decimal)framesWon / gamesPlayed : 0;
+
+                    teamNameLookup.TryGetValue(player.TeamId, out var teamName);
+
+                    return new PlayerViewModel
                     {
+                        PlayerId = player.PlayerId,
                         FirstName = player.FirstName,
                         LastName = player.LastName,
-                        GamesWon = player.GamesWon,
-                        GamesLost = player.GamesLost,
-                        GamesPlayed = player.GamesPlayed,
-                        TeamName = teamNameLookup.TryGetValue(player.TeamId, out var teamName) ? teamName : "Unknown Team",
-                        Average = average
+                        FramesWon = framesWon,
+                        FramesLost = framesLost,
+                        GamesPlayed = gamesPlayed,
+                        TeamName = teamName ?? "Unknown Team",
+                        Average = decimal.Round(average, 3)
                     };
                 })
+                .OrderBy(p => p.TeamName)
+                .ThenBy(p => p.LastName)
                 .ToList();
 
-            return pData;
+            return fullPlayerData;
         }
     }
 }

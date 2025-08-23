@@ -1,69 +1,71 @@
 ﻿using WellandPoolLeagueMud.Data.Models;
+using WellandPoolLeagueMud.Data.Services;
+using WellandPoolLeagueMud.Data.ViewModels;
 
 namespace WellandPoolLeagueMud.Data.Services
 {
-    public class TeamHelper(DataFactory dataFactory, PlayerHelpers playerHelpers)
+    public class TeamHelper(IDataFactory dataFactory)
     {
-        private readonly DataFactory dataFactory = dataFactory;
-        private readonly PlayerHelpers playerHelpers = playerHelpers;
-
-        public async Task<List<TeamStats>> GetAllTeamStats()
+        public async Task<List<TeamStatsViewModel>> GetAllTeamStatsAsync()
         {
-            var teams = await dataFactory.GetTeamDetails();
-            var weekTotals = await dataFactory.GetAllWeeks();
-            var teamTotals = await playerHelpers.ConsolidatePlayersAsync();
+            var teams = await dataFactory.GetTeamsAsync();
+            var allSchedules = await dataFactory.GetSchedulesAsync();
+            var allPlayerGames = await dataFactory.GetAllPlayerGamesAsync();
+            var allWeeklyWinners = await dataFactory.GetWeeklyWinnersAsync();
 
-            if (teams == null || weekTotals == null || teamTotals == null)
+            if (teams == null || allSchedules == null || allPlayerGames == null || allWeeklyWinners == null)
             {
-                return new List<TeamStats>();
+                return new List<TeamStatsViewModel>();
             }
 
-            var teamTotalsLookup = teamTotals
-                .GroupBy(p => p.TeamId)
+            var teamPlayerGamesLookup = allPlayerGames
+                .Where(pg => pg.Player?.TeamId != null)
+                .GroupBy(pg => pg.Player!.TeamId)
                 .ToDictionary(
                     g => g.Key,
                     g => new
                     {
-                        GamesWon = g.Sum(p => p.GamesWon),
-                        GamesLost = g.Sum(p => p.GamesLost)
+                        FramesWon = g.Sum(p => p.FramesWon),
+                        FramesLost = g.Sum(p => p.FramesLost)
                     }
                 );
 
-            var weeksWonLookup = weekTotals
-                .Where(w => w.WinningTeamId.HasValue)
-                .GroupBy(w => w.WinningTeamId.Value)
+            var weeksWonLookup = allWeeklyWinners
+                .GroupBy(w => w.WinningTeamId)
                 .ToDictionary(g => g.Key, g => g.Count());
+
+            var weeksPlayedCount = allSchedules.Select(s => s.WeekNumber).Distinct().Count();
 
             var allTeamStats = teams.Where(t => t.TeamName != "Bye")
                 .Select(team =>
                 {
-                    teamTotalsLookup.TryGetValue(team.Id, out var totals);
-                    weeksWonLookup.TryGetValue(team.Id, out var weeksWon);
+                    teamPlayerGamesLookup.TryGetValue(team.TeamId, out var totals);
+                    weeksWonLookup.TryGetValue(team.TeamId, out var weeksWon);
 
-                    int totalGamesWon = totals?.GamesWon ?? 0;
-                    int totalGamesLost = totals?.GamesLost ?? 0;
+                    int totalFramesWon = totals?.FramesWon ?? 0;
+                    int totalFramesLost = totals?.FramesLost ?? 0;
                     int totalWeeksWon = weeksWon;
-                    int weeksPlayed = weekTotals.Count;
-                    int totalGamesPlayed = totalGamesWon + totalGamesLost;
+                    int weeksLost = weeksPlayedCount - totalWeeksWon;
+                    int totalFramesPlayed = totalFramesWon + totalFramesLost;
 
-                    decimal average = 0;
-                    if (weeksPlayed > 0)
-                    {
-                        average = (decimal)totalWeeksWon / weeksPlayed;
-                    }
+                    decimal average = (totalFramesPlayed > 0) ? (decimal)totalFramesWon / totalFramesPlayed : 0;
+                    decimal points = totalWeeksWon * 2;
 
-                    return new TeamStats
+                    return new TeamStatsViewModel
                     {
                         TeamName = team.TeamName,
-                        TotalGamesWon = totalGamesWon,
-                        TotalGamesLost = totalGamesLost,
+                        TotalFramesWon = totalFramesWon,
+                        TotalFramesLost = totalFramesLost,
                         WeeksWon = totalWeeksWon,
-                        WeeksLost = weeksPlayed - totalWeeksWon,
-                        WeeksPlayed = weeksPlayed,
-                        TotalGamesPlayed = totalGamesPlayed,
-                        TotalAverage = average
+                        WeeksLost = weeksLost,
+                        WeeksPlayed = weeksPlayedCount,
+                        TotalFramesPlayed = totalFramesPlayed,
+                        TotalAverage = decimal.Round(average, 3),
+                        Points = points
                     };
                 })
+                .OrderByDescending(t => t.WeeksWon)
+                .ThenByDescending(t => t.TotalFramesWon)
                 .ToList();
 
             return allTeamStats;

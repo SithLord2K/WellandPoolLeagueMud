@@ -1,111 +1,101 @@
 ﻿using WellandPoolLeagueMud.Data.Models;
+using WellandPoolLeagueMud.Data.Services;
 
 namespace WellandPoolLeagueMud.Data.Services
 {
-    public class PlayerHelpers(DataFactory dataFactory)
+    public class PlayerHelpers(IDataFactory dataFactory)
     {
-        private readonly DataFactory dataFactory = dataFactory;
-
-        public async Task<List<Players>> ConsolidatePlayersAsync()
+        public async Task<List<ConsolidatedPlayer>> ConsolidatePlayersAsync()
         {
-            var allPlayers = await dataFactory.GetPlayers();
-            var allPlayerData = await dataFactory.GetAllPlayerDataAsync();
+            var allPlayers = await dataFactory.GetPlayersAsync();
+            var allPlayerGames = await dataFactory.GetAllPlayerGamesAsync();
 
-            if (allPlayers == null || allPlayerData == null)
+            if (allPlayers == null || !allPlayers.Any())
             {
-                return new List<Players>();
+                return new List<ConsolidatedPlayer>();
             }
 
-            var playerTotalsLookup = allPlayerData.GroupBy(pd => pd.PlayerId)
+            var playerGamesLookup = allPlayerGames.GroupBy(pg => pg.PlayerId)
                 .ToDictionary(
                     group => group.Key,
                     group => new
                     {
-                        GamesWon = group.Sum(x => x.GamesWon),
-                        GamesLost = group.Sum(x => x.GamesLost),
-                        GamesPlayed = group.Sum(x => x.GamesPlayed)
+                        FramesWon = group.Sum(x => x.FramesWon),
+                        FramesLost = group.Sum(x => x.FramesLost)
                     }
                 );
 
-            var pList = allPlayers
-                .Select(p => {
-                    playerTotalsLookup.TryGetValue(p.Id, out var totals);
+            var consolidatedPlayers = allPlayers
+                .Select(p =>
+                {
+                    playerGamesLookup.TryGetValue(p.PlayerId, out var totals);
 
-                    return new Players
+                    return new ConsolidatedPlayer
                     {
-                        Id = p.Id,
+                        PlayerId = p.PlayerId,
                         TeamId = p.TeamId,
-                        FirstName = p.FirstName ?? string.Empty,
-                        LastName = p.LastName ?? string.Empty,
-                        GamesWon = totals?.GamesWon ?? 0,
-                        GamesLost = totals?.GamesLost ?? 0,
-                        GamesPlayed = totals?.GamesPlayed ?? 0
+                        FirstName = p.FirstName,
+                        LastName = p.LastName,
+                        FramesWon = totals?.FramesWon ?? 0,
+                        FramesLost = totals?.FramesLost ?? 0
                     };
                 })
+                .OrderByDescending(p => p.Average)
                 .ToList();
 
-            return pList;
+            return consolidatedPlayers;
         }
 
-        public async Task<Players> GetPlayerDetails(int id)
+        public async Task<ConsolidatedPlayer?> GetPlayerDetailsAsync(int id)
         {
-            var playerInfo = await dataFactory.GetSinglePlayer(id);
-            var getPlayerData = await dataFactory.GetSinglePlayerData(id);
+            var playerInfo = await dataFactory.GetSinglePlayerAsync(id);
 
             if (playerInfo == null)
             {
-                return new Players();
+                return null;
             }
 
-            var playerTotals = new Players
-            {
-                Id = playerInfo.Id,
-                FirstName = playerInfo.FirstName,
-                LastName = playerInfo.LastName ?? string.Empty,
-                GamesWon = getPlayerData?.Sum(gw => gw.GamesWon) ?? 0,
-                GamesLost = getPlayerData?.Sum(y => y.GamesLost) ?? 0,
-                GamesPlayed = getPlayerData?.Sum(y => y.GamesPlayed) ?? 0
-            };
+            var playerGames = await dataFactory.GetPlayerGamesByPlayerIdAsync(id);
+            var framesWon = playerGames.Sum(pg => pg.FramesWon);
+            var framesLost = playerGames.Sum(pg => pg.FramesLost);
 
-            return playerTotals;
+            return new ConsolidatedPlayer
+            {
+                PlayerId = playerInfo.PlayerId,
+                FirstName = playerInfo.FirstName,
+                LastName = playerInfo.LastName,
+                TeamId = playerInfo.TeamId,
+                FramesWon = framesWon,
+                FramesLost = framesLost
+            };
         }
 
         public async Task<TeamStats> GetTeamStatsAsync()
         {
-            var weekTotals = await dataFactory.GetAllWeeks();
-            var teamTotals = await dataFactory.GetAllPlayerDataAsync();
+            var allPlayerGames = await dataFactory.GetAllPlayerGamesAsync();
+            var allSchedules = await dataFactory.GetSchedulesAsync();
 
-            var teamStats = new TeamStats
+            var totalFramesWon = allPlayerGames?.Sum(pg => pg.FramesWon) ?? 0;
+            var totalFramesLost = allPlayerGames?.Sum(pg => pg.FramesLost) ?? 0;
+            var weeksPlayed = allSchedules?.Select(s => s.WeekNumber).Distinct().Count() ?? 0;
+
+            var totalFramesPlayed = totalFramesWon + totalFramesLost;
+            var totalAverage = totalFramesPlayed > 0 ?
+                decimal.Round((decimal)totalFramesWon / totalFramesPlayed, 2) : 0;
+
+            return new TeamStats
             {
-                TotalGamesWon = teamTotals?.Sum(x => x.GamesWon) ?? 0,
-                TotalGamesLost = teamTotals?.Sum(y => y.GamesLost) ?? 0,
-                WeeksPlayed = weekTotals?.Count ?? 0
+                TotalFramesWon = totalFramesWon,
+                TotalFramesLost = totalFramesLost,
+                WeeksPlayed = weeksPlayed,
+                TotalAverage = totalAverage
             };
-
-            teamStats.TotalGamesPlayed = teamStats.TotalGamesWon + teamStats.TotalGamesLost;
-
-            if (teamStats.TotalGamesPlayed > 0)
-            {
-                teamStats.TotalAverage = decimal.Round(teamStats.TotalGamesWon / (decimal)teamStats.TotalGamesPlayed, 2);
-            }
-            else
-            {
-                teamStats.TotalAverage = 0;
-            }
-
-            return teamStats;
         }
 
-        public async Task<List<TeamDetail>> GetTeamDetailsAsync()
+        public async Task<List<WPL_Team>> GetActiveTeamsAsync()
         {
-            var teamDetails = await dataFactory.GetTeamDetails();
-
-            if (teamDetails == null)
-            {
-                return new List<TeamDetail>();
-            }
-
-            return teamDetails.Where(x => x.TeamName != "Bye").ToList();
+            var teams = await dataFactory.GetTeamsAsync();
+            return teams?.Where(t => t.TeamName != "Bye").ToList() ?? new List<WPL_Team>();
         }
     }
 }

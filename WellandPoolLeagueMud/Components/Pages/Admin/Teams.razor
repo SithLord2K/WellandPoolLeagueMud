@@ -1,0 +1,137 @@
+﻿@page "/admin/teams"
+@using WellandPoolLeagueMud.Data.Models
+@using WellandPoolLeagueMud.Data.Services
+@using MudBlazor
+@inject ISnackbar Snackbar
+@inject IDataFactory DataFactory
+
+<PageTitle>Teams Administration</PageTitle>
+
+<MudContainer>
+    <MudGrid Justify="Justify.Center" Spacing="4">
+        <MudItem xs="12" sm="8" md="6">
+            <MudPaper Class="pa-4">
+                <MudText Typo="Typo.h5" Class="mb-4">Add/Edit Team</MudText>
+                <MudForm>
+                    <MudGrid>
+                        @if (isLoading)
+                        {
+                            <MudItem xs="12" Class="d-flex justify-center py-8">
+                                <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+                            </MudItem>
+                        }
+                        else
+                        {
+                            <MudItem xs="12">
+                                <MudSelect T="int?"
+                                           Label="Choose Team to Edit"
+                                           Value="team.TeamId"
+                                           ValueChanged="LoadTeamAsync"
+                                           Variant="Variant.Filled">
+                                    <MudSelectItem T="int?" Value="null">Create New Team</MudSelectItem>
+                                    @if (allTeams is not null)
+                                    {
+                                        @foreach (var t in allTeams)
+                                        {
+                                            <MudSelectItem T="int?" Value="t.TeamId">@t.TeamName</MudSelectItem>
+                                        }
+                                    }
+                                </MudSelect>
+                            </MudItem>
+
+                            <MudItem xs="12">
+                                <MudTextField T="string"
+                                              Label="Team Name"
+                                              @bind-Value="team.TeamName"
+                                              Required
+                                              Variant="Variant.Filled" />
+                            </MudItem>
+
+                            <MudItem xs="12">
+                                <MudSelect T="int?"
+                                           Label="Team Captain"
+                                           @bind-Value="team.CaptainPlayerId"
+                                           Variant="Variant.Filled">
+                                    <MudSelectItem T="int?" Value="null">Select a Captain</MudSelectItem>
+                                    @if (allPlayers is not null)
+                                    {
+                                        @foreach (var p in allPlayers)
+                                        {
+                                            <MudSelectItem T="int?" Value="p.PlayerId">@p.FirstName @p.LastName</MudSelectItem>
+                                        }
+                                    }
+                                </MudSelect>
+                            </MudItem>
+
+                            <MudItem xs="12" Class="d-flex justify-start gap-4 mt-4">
+                                <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="SaveTeamAsync">Save Team</MudButton>
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ResetForm">Reset</MudButton>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                </MudForm>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+@code {
+    private WPL_Team team = new();
+    private List<WPL_Team>? allTeams;
+    private List<WPL_Player>? allPlayers;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            isLoading = true;
+            allTeams = await DataFactory.GetTeamsAsync();
+            allPlayers = await DataFactory.GetPlayersAsync();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void LoadTeamAsync(int? teamId)
+    {
+        if (teamId.HasValue && allTeams is not null)
+        {
+            team = allTeams.FirstOrDefault(t => t.TeamId == teamId) ?? new WPL_Team();
+        }
+        else
+        {
+            ResetForm();
+        }
+    }
+
+    private async Task SaveTeamAsync()
+    {
+        var isNewTeam = team.TeamId == 0;
+        var success = await DataFactory.SaveTeamAsync(team);
+
+        if (success)
+        {
+            var message = isNewTeam ? "Team added successfully!" : "Team updated successfully!";
+            Snackbar.Add(message, Severity.Success);
+            await LoadDataAsync();
+            ResetForm();
+        }
+        else
+        {
+            Snackbar.Add("Failed to save team. Please try again.", Severity.Error);
+        }
+    }
+
+    private void ResetForm()
+    {
+        team = new WPL_Team();
+    }
+}

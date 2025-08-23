@@ -1,53 +1,41 @@
 ﻿using WellandPoolLeagueMud.Data.Models;
+using WellandPoolLeagueMud.Data.Services;
+using WellandPoolLeagueMud.Data.ViewModels;
 
 namespace WellandPoolLeagueMud.Data.Services
 {
-    public class WeekHelper(DataFactory dataFactory)
+    public class WeekHelper(IDataFactory dataFactory)
     {
-        public List<WeekFullInfo> WeekHelperFullInfo { get; set; } = [];
-
-        private readonly DataFactory dataFactory = dataFactory;
-
-        public async Task<List<WeekFullInfo>> GetFullWeek()
+        public async Task<List<WeekViewModel>> GetWeeksFullInfoAsync()
         {
-            
-            var fullWeeks = await dataFactory.GetAllWeeks();
-            List<PlayerDatum> playerInfo = [];
-            var allPlayers = await dataFactory.GetPlayers();
-            foreach (var player in allPlayers)
-            {
-                
-                var players = await dataFactory.GetSinglePlayerData(player.Id);
-                foreach (var p in players)
-                {
-                    playerInfo.Add(p);
-                }
-            }
-            foreach (Week week in fullWeeks)
-            {
-                List<TeamDetail>? whatTeam = await dataFactory.GetTeamDetails();
-                bool testWeek = week.Forfeit;
-                if (whatTeam is not null)
-                {
-                    WeekFullInfo weekFull = new()
-                    {
-                        WeekNumber = week.WeekNumber,
-                        Home_Team = week.Home_Team,
-                        Away_Team = week.Away_Team,
-                        Home_TeamName = whatTeam.First(td => td.Id == week.Home_Team).TeamName,
-                        Away_TeamName = whatTeam.First(td => td.Id == week.Away_Team).TeamName,
-                        WinningTeamId = week.WinningTeamId
+            var allSchedules = await dataFactory.GetSchedulesAsync();
+            var allTeams = await dataFactory.GetTeamsAsync();
 
-                    };
-                    if (week.WeekNumber > 18)
-                    {
-                        weekFull.Playoff = true;
-                    }
-                    WeekHelperFullInfo.Add(weekFull);
-                }
+            if (allSchedules == null || !allSchedules.Any() || allTeams == null || !allTeams.Any())
+            {
+                return new List<WeekViewModel>();
             }
-            return WeekHelperFullInfo;
 
+            var teamLookup = allTeams.ToDictionary(t => t.TeamId, t => t.TeamName);
+
+            var weeksFullInfo = allSchedules
+                .Select(schedule => new WeekViewModel
+                {
+                    WeekNumber = schedule.WeekNumber,
+                    Date = schedule.Date,
+                    HomeTeamId = schedule.HomeTeamId,
+                    AwayTeamId = schedule.AwayTeamId,
+                    HomeTeamName = teamLookup.TryGetValue(schedule.HomeTeamId, out var homeName) ? homeName : string.Empty,
+                    AwayTeamName = teamLookup.TryGetValue(schedule.AwayTeamId, out var awayName) ? awayName : string.Empty,
+                    WinningTeamId = schedule.WinningTeamId,
+                    IsForfeit = schedule.Forfeit,
+                    IsPlayoff = schedule.WeekNumber > 18,
+                    TableNumber = schedule.TableNumber ?? 0
+                })
+                .OrderBy(w => w.WeekNumber)
+                .ToList();
+
+            return weeksFullInfo;
         }
     }
 }

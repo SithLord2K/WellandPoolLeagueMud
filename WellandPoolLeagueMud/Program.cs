@@ -11,15 +11,18 @@ using WellandPoolLeagueMud.Data.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add Data Services
-builder.Services.AddTransient<DataFactory>();
+// Register the IDataFactory and its implementation
+builder.Services.AddScoped<IDataFactory, DataFactory>();
+
+// Register other services that depend on IDataFactory
 builder.Services.AddTransient<WeekHelper>();
 builder.Services.AddTransient<PDataService>();
 builder.Services.AddTransient<TeamHelper>();
 builder.Services.AddTransient<PlayerHelpers>();
 builder.Services.AddTransient<RosterHelper>();
-builder.Services.AddTransient<PlayerViewService>();
-builder.Services.AddDbContextFactory<WPLStatsDBContext>(options =>
+builder.Services.AddTransient<StandingService>();
+
+builder.Services.AddDbContextFactory<WPLMudDBContext>(options =>
 {
     options.UseSqlServer(builder.Configuration.GetConnectionString("WPLStatsDB"));
 });

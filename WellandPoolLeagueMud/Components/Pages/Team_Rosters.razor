@@ -1,91 +1,66 @@
 ﻿@page "/team_rosters"
 @attribute [StreamRendering]
 @using WellandPoolLeagueMud.Components.Buttons
-@using Roster = WellandPoolLeagueMud.Data.Models.Roster
+@using WellandPoolLeagueMud.Data.Services
+@using WellandPoolLeagueMud.Data.ViewModels
+@using WellandPoolLeagueMud.Data.Models
+@using MudBlazor
 
 <PageTitle>Team Rosters</PageTitle>
 
-@if (teams is not null)
+@if (teamRosters is not null)
 {
-    // Define the group definition
-    var groupDefinition = new TableGroupDefinition<Roster>()
+    @foreach (var team in teamRosters.Where(t => t.TeamName != "Bye"))
     {
-        GroupName = "Team",
-        Expandable = true,
-        IsInitiallyExpanded = false,
-        Selector = (e) => teams.FirstOrDefault(t => t.Id == e.TeamId)?.TeamName ?? "N/A"
-    };
-
-    <MudTable Items="@rosters.Where(r => r.TeamId != teams.FirstOrDefault(t => t.TeamName != "Bye")?.Id)"
-              GroupBy="@groupDefinition"
-              Hover="true"
-              Striped="true"
-              GroupHeaderStyle="background-color:var(--mud-palette-background-gray)"
-              Dense="false" 
-              T="Roster">
-        <ToolBarContent>
-            <MudText>Team Rosters</MudText>
-        </ToolBarContent>
-        <GroupHeaderTemplate>
-            <MudTh Class="mud-bg-info" Style="text-align:left;" colspan="4">
-                @context.GroupName: @context.Key
-            </MudTh>
-        </GroupHeaderTemplate>
-        <HeaderContent>
-            <MudTh>Team #</MudTh>
-            <MudTh>Name</MudTh>
-            <MudTh>Games Played</MudTh>
-            <MudTh>Captain?</MudTh>
-        </HeaderContent>
-        <RowTemplate>
-            <MudTh Style="text-align:center;">@context.TeamId</MudTh>
-            <MudTd Style="text-align:center;">@context.Player_Name</MudTd>
-            <MudTd Style="text-align:center;">
-                @{
-                    var playerList = players ?? Enumerable.Empty<Players>();
-                    var player = playerList.FirstOrDefault(p => p.Id == context.Player_Id);
-                    <span>@(player?.GamesPlayed ?? 0)</span>
-                }
-            </MudTd>
-            <MudTd Style="text-align:center;">
-                @if (context.Player_Id == context.Captain_Player_Id)
-                {
-                    <MudIcon Icon="@Icons.Material.Filled.Check" Color="Color.Success" />
-                }
-            </MudTd>
-        </RowTemplate>
-        <GroupFooterTemplate>
-            <MudTd Class="mud-table-cell-custom-group-footer" colspan="4" Style="font-weight: bold; text-align: right;">
-                Team Roster Size: @context.Items.Count()
-            </MudTd>
-        </GroupFooterTemplate>
-    </MudTable>
+        <MudCard Class="mb-4">
+            <MudCardHeader>
+                <MudText Typo="Typo.h5" Align="Align.Center" Class="m-auto">@team.TeamName</MudText>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudTable Items="@team.Players"
+                          Hover="true"
+                          Striped="true"
+                          Dense="true"
+                          T="WPL_Player">
+                    <HeaderContent>
+                        <MudTh>Player Name</MudTh>
+                        <MudTh>Games Played</MudTh>
+                        <MudTh>Captain?</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Player Name">@context.FirstName @context.LastName</MudTd>
+                        <MudTd DataLabel="Games Played" Style="text-align:center;">
+                            @context.GamesPlayed
+                        </MudTd>
+                        <MudTd DataLabel="Captain?" Style="text-align:center;">
+                            @if (context.IsCaptain)
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.Check" Color="Color.Success" />
+                            }
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudCardContent>
+            <MudCardActions Class="d-flex justify-end">
+                <MudText Typo="Typo.subtitle2">Roster Size: @team.Players.Count()</MudText>
+            </MudCardActions>
+        </MudCard>
+    }
+}
+else
+{
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" Class="m-4" />
 }
 
 <ScrollToTopButton />
 
 @code {
-    
-    private List<Players>? players = [];
-    private List<TeamDetail> teams = [];
-    private List<Roster> rosters = [];
+    [Inject] private RosterHelper rosterHelper { get; set; } = default!;
 
-    //Inject Services
-    private readonly RosterHelper rosterHelper;
-    private readonly PlayerHelpers playerHelpers;
-    private readonly DataFactory dataFactory;
-
-    public Team_Rosters(DataFactory dataFactory, RosterHelper rosterHelper, PlayerHelpers playerHelpers)
-    {
-        this.dataFactory = dataFactory;
-        this.rosterHelper = rosterHelper;
-        this.playerHelpers = playerHelpers;
-    }
+    private List<TeamRoster>? teamRosters;
 
     protected override async Task OnInitializedAsync()
     {
-        players = await playerHelpers.ConsolidatePlayersAsync();
-        teams = await dataFactory.GetTeamDetails();
-        rosters = await rosterHelper.GetRoster();
+        teamRosters = await rosterHelper.GetTeamRostersAsync();
     }
 }

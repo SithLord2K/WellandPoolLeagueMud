@@ -1,70 +1,58 @@
 ﻿using WellandPoolLeagueMud.Data.Models;
-using Roster = WellandPoolLeagueMud.Data.Models.Roster;
+using WellandPoolLeagueMud.Data.ViewModels;
 
 namespace WellandPoolLeagueMud.Data.Services
 {
-    public class RosterHelper
+    public class RosterHelper(IDataFactory dataFactory)
     {
-        private readonly DataFactory dataFactory;
-
-        public RosterHelper(DataFactory dataFactory)
+        public async Task<List<TeamRoster>> GetTeamRostersAsync()
         {
-            this.dataFactory = dataFactory;
-        }
-
-        public async Task<List<Roster>> GetRoster()
-        {
-            var teams = await dataFactory.GetTeamDetails();
-            var players = await dataFactory.GetPlayers();
+            var teams = await dataFactory.GetTeamsAsync();
+            var players = await dataFactory.GetPlayersAsync();
 
             if (teams == null || players == null)
             {
-                return new List<Roster>();
+                return new List<TeamRoster>();
             }
 
-            var rosters = teams.SelectMany(team =>
-                players.Where(player => player.TeamId == team.Id)
-                       .Select(player => new Roster
-                       {
-                           TeamId = team.Id,
-                           TeamName = team.TeamName,
-                           Captain_Player_Id = team.Captain_Player_Id,
-                           Player_Id = player.Id,
-                           Player_Name = $"{player.FirstName} {player.LastName}"
-                       })
-            ).ToList();
+            var rosters = new List<TeamRoster>();
+            foreach (var team in teams)
+            {
+                var teamPlayers = players.Where(p => p.TeamId == team.TeamId).ToList();
+                var teamRoster = new TeamRoster
+                {
+                    TeamId = team.TeamId,
+                    TeamName = team.TeamName,
+                    Players = teamPlayers
+                };
+                rosters.Add(teamRoster);
+            }
 
             return rosters;
         }
 
-        public async Task<List<Roster>> GetSingleTeamRoster(int teamId)
+        public async Task<TeamRoster?> GetSingleTeamRosterAsync(int teamId)
         {
-            var team = await dataFactory.GetSingleTeam(teamId);
-            var players = await dataFactory.GetPlayers();
-
-            if (team == null || players == null)
+            var team = await dataFactory.GetSingleTeamAsync(teamId);
+            if (team == null)
             {
-                return new List<Roster>();
+                return null;
             }
 
-            var play = players.Where(x => x.TeamId == team.Id).ToList();
+            var players = await dataFactory.GetPlayersAsync();
+            var teamPlayers = players?.Where(p => p.TeamId == team.TeamId).ToList();
 
-            var rosters = play.Select(player => new Roster
+            return new TeamRoster
             {
-                TeamId = team.Id,
+                TeamId = team.TeamId,
                 TeamName = team.TeamName,
-                Captain_Player_Id = team.Captain_Player_Id,
-                Player_Id = player.Id,
-                Player_Name = $"{player.FirstName} {player.LastName}",
-                IsCaptain = player.Id == team.Captain_Player_Id
-            }).ToList();
-
-            return rosters;
+                Players = teamPlayers ?? new List<WPL_Player>()
+            };
         }
 
-        public async Task<List<Schedule>> GetSchedules()
+        public async Task<List<WPL_Schedule>> GetSchedulesAsync()
         {
-            return await dataFactory.GetSchedules();
+            return await dataFactory.GetSchedulesAsync();
         }
     }
 }

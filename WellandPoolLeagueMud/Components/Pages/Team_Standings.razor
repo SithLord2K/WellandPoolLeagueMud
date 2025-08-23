@@ -2,123 +2,59 @@
 @attribute [StreamRendering]
 @using MudBlazor
 @using WellandPoolLeagueMud.Components.Buttons
-@using System.Linq
+@using WellandPoolLeagueMud.Data.Services
+@using WellandPoolLeagueMud.Data.ViewModels
+@inject StandingService standingService
 
 <PageTitle>Team Standings</PageTitle>
 
-@if (teamStats is not null)
+@if (teamStandings is not null)
 {
-    <MudText>Team Standings</MudText>
-    <br />
-    <MudText>Division A</MudText>
-    <MudDataGrid TItem="TeamStats"
-                 Items="@teamStats.Where(t => GetDivision(t) == "Division A").OrderByDescending(x => x.TotalGamesWon)"
-                 Hover="true"
-                 Striped="true"
-                 Dense="false"
-                 Sortable="true">
-        <Columns>
-            <PropertyColumn Property="x => x.TeamName" Title="Team Name" />
-            <PropertyColumn Property="x => x.TotalGamesPlayed" Title="Games Played" />
-            <PropertyColumn Property="x => x.TotalGamesWon" Title="Games Won" />
-            <PropertyColumn Property="x => x.TotalGamesLost" Title="Games Lost" />
-            <PropertyColumn Property="x => x.WeeksWon" Title="Weeks Won" />
-            <PropertyColumn Property="x => x.TotalAverage" Title="Team Average" Format="P2" />
-        </Columns>
-    </MudDataGrid>
-
-    <MudText>Division B</MudText>
-    <MudDataGrid TItem="TeamStats"
-                 Items="@teamStats.Where(t => GetDivision(t) == "Division B").OrderByDescending(x => x.TotalGamesWon)"
-                 Hover="true"
-                 Striped="true"
-                 Dense="false"
-                 Sortable="true">
-        <Columns>
-            <PropertyColumn Property="x => x.TeamName" Title="Team Name" />
-            <PropertyColumn Property="x => x.TotalGamesPlayed" Title="Games Played" />
-            <PropertyColumn Property="x => x.TotalGamesWon" Title="Games Won" />
-            <PropertyColumn Property="x => x.TotalGamesLost" Title="Games Lost" />
-            <PropertyColumn Property="x => x.WeeksWon" Title="Weeks Won" />
-            <PropertyColumn Property="x => x.TotalAverage" Title="Team Average" Format="P2" />
-        </Columns>
-    </MudDataGrid>
-
-    <MudText>Division C</MudText>
-    <MudDataGrid TItem="TeamStats"
-                 Items="@teamStats.Where(t => GetDivision(t) == "Division C").OrderByDescending(x => x.TotalGamesWon)"
-                 Hover="true"
-                 Striped="true"
-                 Dense="false"
-                 Sortable="true">
-        <Columns>
-            <PropertyColumn Property="x => x.TeamName" Title="Team Name" />
-            <PropertyColumn Property="x => x.TotalGamesPlayed" Title="Games Played" />
-            <PropertyColumn Property="x => x.TotalGamesWon" Title="Games Won" />
-            <PropertyColumn Property="x => x.TotalGamesLost" Title="Games Lost" />
-            <PropertyColumn Property="x => x.WeeksWon" Title="Weeks Won" />
-            <PropertyColumn Property="x => x.TotalAverage" Title="Team Average" Format="P2" />
-        </Columns>
-    </MudDataGrid>
+    @foreach (var divisionGroup in teamStandings.GroupBy(x => x.Division))
+    {
+        <MudText Typo="Typo.h6" Class="my-4">@divisionGroup.Key</MudText>
+        <MudDataGrid TItem="TeamStandingViewModel"
+                     Items="@divisionGroup.OrderByDescending(x => x.Points).ThenByDescending(x => x.TotalFramesWon).ToList()"
+                     Hover="true"
+                     Striped="true"
+                     Dense="false"
+                     Sortable="true">
+            <ToolBarContent>
+                <MudText Typo="Typo.h6">Team Standings</MudText>
+                <MudSpacer />
+                <MudTextField T="string" Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0" />
+            </ToolBarContent>
+            <Columns>
+                <PropertyColumn Property="x => x.TeamName" Title="Team Name" />
+                <PropertyColumn Property="x => x.WeeksWon" Title="Weeks Won" />
+                <PropertyColumn Property="x => x.WeeksLost" Title="Weeks Lost" />
+                <PropertyColumn Property="x => x.TotalFramesWon" Title="Frames Won" />
+                <PropertyColumn Property="x => x.TotalFramesLost" Title="Frames Lost" />
+                <PropertyColumn Property="x => x.Points" Title="Points" />
+            </Columns>
+            <PagerContent>
+                <MudDataGridPager T="TeamStandingViewModel" />
+            </PagerContent>
+            <NoRecordsContent>
+                <div class="box">
+                    No Team Stats Found!
+                </div>
+            </NoRecordsContent>
+        </MudDataGrid>
+    }
+}
+else
+{
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" Class="m-4" />
 }
 
 <ScrollToTopButton />
 
 @code {
-    private readonly TeamHelper teamHelper;
-    private readonly PlayerHelpers playerHelper;
-    private readonly PDataService pDataService;
-    private readonly DataFactory dataFactory;
-
-    private List<TeamStats> teamStats = new();
-    private List<TeamDetail> teamDetails = new();
-    private List<Players>? playerData = new();
-    private List<PDataModel> pData = new();
-
-    private Dictionary<string, int> teamRankings = new();
-
-    private string GetDivision(TeamStats team)
-    {
-        if (!string.IsNullOrEmpty(team.TeamName) && teamRankings.TryGetValue(team.TeamName, out var rank))
-        {
-            if (rank >= 0 && rank < 3)
-            {
-                return "Division A";
-            }
-            else if (rank >= 3 && rank < 7)
-            {
-                return "Division B";
-            }
-            else
-            {
-                return "Division C";
-            }
-        }
-        return "Unknown Division";
-    }
-
-    public Team_Standings(PlayerHelpers playerHelpers, TeamHelper teamHelper, PDataService pDataService, DataFactory dataFactory)
-    {
-        this.playerHelper = playerHelpers;
-        this.teamHelper = teamHelper;
-        this.pDataService = pDataService;
-        this.dataFactory = dataFactory;
-    }
+    private List<TeamStandingViewModel>? teamStandings;
 
     protected override async Task OnInitializedAsync()
     {
-        playerData = await playerHelper.ConsolidatePlayersAsync();
-        teamDetails = await dataFactory.GetTeamDetails();
-        teamStats = await teamHelper.GetAllTeamStats();
-        pData = await pDataService.GetFullPlayerData();
-
-        var sortedTeams = teamStats.OrderByDescending(x => x.TotalGamesWon).ToList();
-        for (int i = 0; i < sortedTeams.Count; i++)
-        {
-            if (!string.IsNullOrEmpty(sortedTeams[i].TeamName))
-            {
-                teamRankings[sortedTeams[i].TeamName] = i;
-            }
-        }
+        teamStandings = await standingService.GetTeamStandingsAsync();
     }
 }

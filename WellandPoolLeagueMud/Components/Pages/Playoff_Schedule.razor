@@ -1,10 +1,9 @@
 ﻿@page "/playoff_schedule"
 @attribute [StreamRendering]
-@using Schedules = WellandPoolLeagueMud.Data.Models.Schedule
 @using WellandPoolLeagueMud.Data.Services
+@using WellandPoolLeagueMud.Data.ViewModels
 @using WellandPoolLeagueMud.Components.Buttons
 @using MudBlazor
-@inject NavigationManager navigationManager
 
 <PageTitle>Playoff Schedule</PageTitle>
 
@@ -20,105 +19,97 @@
 </div>
 <br />
 
-@foreach (var day in schedules.DistinctBy(x => x.Date).Where(x => x.Playoffs == true))
+@if (playoffWeeks is not null && playoffWeeks.Any())
 {
-    <div id="@day.Date.ToString("MM-dd-yyy")">
-        <MudCard Class="mb-4">
-            <MudCardHeader>
-                <MudText Typo="Typo.h5" Align="Align.Center" Class="m-auto">@day.Date.ToLongDateString()</MudText>
-            </MudCardHeader>
-            <MudCardContent>
-                <MudText Typo="Typo.h6" Align="Align.Center" Class="mb-4">Week: @day.Week_Id_Playoff</MudText>
-                <MudTable Items="@schedules.Where(x => x.Date == day.Date)"
-                          Dense="true"
-                          Hover="true"
-                          Bordered="true"
-                          Striped="true">
-                    <HeaderContent>
-                        <MudTh Style="width: 50px;">Win</MudTh>
-                        <MudTh>Home Team</MudTh>
-                        <MudTh></MudTh>
-                        <MudTh>Away Team</MudTh>
-                        <MudTh Style="width: 50px;">Win</MudTh>
-                        <MudTh>Table Number</MudTh>
-                    </HeaderContent>
-                    <RowTemplate>
-                        <MudTd DataLabel="Win">
-                            <MudCheckBox T="bool" Value="HomeWinChecked(context.Week_Id_Playoff.GetValueOrDefault(), context.Home_Team).Result" Color="Color.Success" UnCheckedColor="Color.Default" ReadOnly />
-                        </MudTd>
-                        <MudTd DataLabel="Home Team">@teams.FirstOrDefault(x => x.Id == context.Home_Team)?.TeamName</MudTd>
-                        <MudTd DataLabel="" Style="text-align: center; vertical-align: middle;">vs</MudTd>
-                        <MudTd DataLabel="Away Team">@teams.FirstOrDefault(x => x.Id == context.Away_Team)?.TeamName</MudTd>
-                        <MudTd DataLabel="Win">
-                            <MudCheckBox T="bool" Value="AwayWinChecked(context.Week_Id_Playoff.GetValueOrDefault(), context.Away_Team).Result" Color="Color.Success" UnCheckedColor="Color.Default" ReadOnly />
-                        </MudTd>
-                        <MudTd DataLabel="Table Number" Style="text-align: center;">@context.Table_Number</MudTd>
-                    </RowTemplate>
-                    <NoRecordsContent>
-                        <div class="box">
-                            No games scheduled for this week.
-                        </div>
-                    </NoRecordsContent>
-                </MudTable>
-            </MudCardContent>
-        </MudCard>
-    </div>
+    @foreach (var week in playoffWeeks.DistinctBy(x => x.WeekNumber))
+    {
+        <div id="@week.Date.ToString("MM-dd-yyyy")">
+            <MudCard Class="mb-4">
+                <MudCardHeader>
+                    <MudText Typo="Typo.h5" Align="Align.Center" Class="m-auto">@week.Date.ToLongDateString()</MudText>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudText Typo="Typo.h6" Align="Align.Center" Class="mb-4">Week: @week.WeekNumber</MudText>
+                    <MudTable Items="@playoffWeeks.Where(x => x.WeekNumber == week.WeekNumber).ToList()"
+                              Dense="true"
+                              Hover="true"
+                              Bordered="true"
+                              Striped="true">
+                        <HeaderContent>
+                            <MudTh Style="width: 50px;">Win</MudTh>
+                            <MudTh>Home Team</MudTh>
+                            <MudTh></MudTh>
+                            <MudTh>Away Team</MudTh>
+                            <MudTh Style="width: 50px;">Win</MudTh>
+                            <MudTh>Table Number</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Win">
+                                <MudCheckBox T="bool"
+                                             Value="@(context.WinningTeamId == context.HomeTeamId)"
+                                             Color="Color.Success"
+                                             UnCheckedColor="Color.Default"
+                                             ReadOnly />
+                            </MudTd>
+                            <MudTd DataLabel="Home Team">@context.HomeTeamName</MudTd>
+                            <MudTd DataLabel="" Style="text-align: center; vertical-align: middle;">vs</MudTd>
+                            <MudTd DataLabel="Away Team">@context.AwayTeamName</MudTd>
+                            <MudTd DataLabel="Win">
+                                <MudCheckBox T="bool"
+                                             Value="@(context.WinningTeamId == context.AwayTeamId)"
+                                             Color="Color.Success"
+                                             UnCheckedColor="Color.Default"
+                                             ReadOnly />
+                            </MudTd>
+                            <MudTd DataLabel="Table Number" Style="text-align: center;">@context.TableNumber</MudTd>
+                        </RowTemplate>
+                        <NoRecordsContent>
+                            <div class="box">
+                                No games scheduled for this week.
+                            </div>
+                        </NoRecordsContent>
+                    </MudTable>
+                </MudCardContent>
+            </MudCard>
+        </div>
+    }
 }
+else
+{
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" Class="m-4" />
+}
+
 <ScrollToTopButton />
 
 @code {
-    private readonly RosterHelper rosterHelper;
-    private readonly TeamHelper teamHelper;
-    private readonly WeekHelper weekHelper;
-    private readonly DataFactory dataFactory;
+    [Inject] private WeekHelper weekHelper { get; set; } = default!;
+
+    // This is the correct way to inject navigationManager
+    [Inject] private NavigationManager navigationManager { get; set; } = default!;
+
     private MudDatePicker datePicker = new();
     private DateTime? selectedDate = DateTime.Today;
-    private DateOnly? dateOnly;
-    private string onlyDate = string.Empty;
 
-    private List<Schedules> schedules = new();
-    private List<TeamDetail> teams = new();
-    private List<TeamStats> teamStats = new();
-    private List<WeekFullInfo> weeks = new();
-
-    public Playoff_Schedule(RosterHelper rosterHelper, TeamHelper teamHelper, WeekHelper weekHelper, DataFactory dataFactory)
-    {
-        this.rosterHelper = rosterHelper;
-        this.teamHelper = teamHelper;
-        this.weekHelper = weekHelper;
-        this.dataFactory = dataFactory;
-    }
+    private List<WeekViewModel>? playoffWeeks;
 
     protected override async Task OnInitializedAsync()
     {
-        teams = await dataFactory.GetTeamDetails();
-        schedules = await rosterHelper.GetSchedules();
-        teamStats = await teamHelper.GetAllTeamStats();
-        weeks = await weekHelper.GetFullWeek();
-    }
-
-    Task<bool> HomeWinChecked(int WeekId, int HomeId)
-    {
-        var homeWeek = weeks.FirstOrDefault(x => x.WeekNumber == WeekId && x.Home_Team == HomeId && x.WinningTeamId == HomeId);
-        return Task.FromResult(homeWeek != null && homeWeek.WinningTeamId == HomeId);
-    }
-
-    Task<bool> AwayWinChecked(int WeekId, int AwayId)
-    {
-        var homeWeek = weeks.FirstOrDefault(x => x.WeekNumber == WeekId && x.Away_Team == AwayId && x.WinningTeamId == AwayId);
-        return Task.FromResult(homeWeek != null && homeWeek.WinningTeamId == AwayId);
+        var allWeeks = await weekHelper.GetWeeksFullInfoAsync();
+        playoffWeeks = allWeeks.Where(w => w.IsPlayoff).ToList();
     }
 
     private void SelectedDate(DateTime? selectedDate)
     {
         string uri = navigationManager.Uri.ToString();
-        if (!uri.Contains("#"))
+        var dateString = selectedDate?.ToString("MM-dd-yyyy");
+        if (dateString is not null)
         {
-            uri += "#";
+            var fragment = dateString.Replace("/", "-");
+            if (uri.Contains('#'))
+            {
+                uri = uri.Substring(0, uri.IndexOf('#'));
+            }
+            navigationManager.NavigateTo($"{uri}#{fragment}", replace: true);
         }
-        dateOnly = selectedDate.HasValue ? DateOnly.FromDateTime(selectedDate.Value) : (DateOnly?)null;
-        onlyDate = dateOnly.HasValue ? dateOnly.Value.ToString("MM-dd-yyyy") : string.Empty;
-
-        navigationManager.NavigateTo($"{uri}{onlyDate}");
     }
 }

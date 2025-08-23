@@ -1,0 +1,146 @@
+﻿@page "/admin/players"
+@using WellandPoolLeagueMud.Data.Services
+@using WellandPoolLeagueMud.Data.Models
+@using MudBlazor
+@inject ISnackbar Snackbar
+@inject IDataFactory dataFactory
+
+<PageTitle>Players Administration</PageTitle>
+
+<MudContainer>
+    <MudGrid Justify="Justify.Center" Spacing="4">
+        <MudItem xs="12" sm="8" md="6">
+            <MudPaper Class="pa-4">
+                <MudText Typo="Typo.h5" Class="mb-4">Add/Edit Player</MudText>
+                <MudForm>
+                    <MudGrid>
+                        @if (isLoading)
+                        {
+                            <MudItem xs="12" Class="d-flex justify-center py-8">
+                                <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+                            </MudItem>
+                        }
+                        else
+                        {
+                            <MudItem xs="12">
+                                <MudSelect T="int?"
+                                           Label="Select a Player to Edit"
+                                           Value="player.PlayerId"
+                                           ValueChanged="LoadPlayer"
+                                           Variant="Variant.Filled">
+                                    <MudSelectItem T="int?" Value="null">Create New Player</MudSelectItem>
+                                    @if (allPlayers is not null)
+                                    {
+                                        @foreach (var p in allPlayers)
+                                        {
+                                            <MudSelectItem T="int?" Value="p.PlayerId">@p.FirstName @p.LastName</MudSelectItem>
+                                        }
+                                    }
+                                </MudSelect>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudTextField T="string"
+                                              Label="First Name"
+                                              Value="player.FirstName"
+                                              Required
+                                              Variant="Variant.Filled" />
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudTextField T="string"
+                                              Label="Last Name"
+                                              Value="player.LastName"
+                                              Required
+                                              Variant="Variant.Filled" />
+                            </MudItem>
+
+                            <MudItem xs="12">
+                                <MudSelect T="int?"
+                                           Label="Team"
+                                           Value="player.TeamId"
+                                           Variant="Variant.Filled">
+                                    <MudSelectItem T="int?" Value="null">Select a Team</MudSelectItem>
+                                    @if (allTeams is not null)
+                                    {
+                                        @foreach (var t in allTeams)
+                                        {
+                                            <MudSelectItem T="int?" Value="t.TeamId">@t.TeamName</MudSelectItem>
+                                        }
+                                    }
+                                </MudSelect>
+                            </MudItem>
+
+                            <MudItem xs="12" Class="d-flex justify-start gap-4 mt-4">
+                                <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="AddOrUpdatePlayerAsync">Save Player</MudButton>
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ResetForm">Reset</MudButton>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                </MudForm>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+@code {
+    private WPL_Player player = new();
+    private List<WPL_Team>? allTeams;
+    private List<WPL_Player>? allPlayers;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        isLoading = true;
+        allPlayers = await dataFactory.GetPlayersAsync();
+        allTeams = await dataFactory.GetTeamsAsync();
+        isLoading = false;
+    }
+
+    private void LoadPlayer(int? playerId)
+    {
+        if (playerId.HasValue && allPlayers is not null)
+        {
+            player = allPlayers.FirstOrDefault(p => p.PlayerId == playerId) ?? new WPL_Player();
+        }
+        else
+        {
+            ResetForm();
+        }
+    }
+
+    private async Task AddOrUpdatePlayerAsync()
+    {
+        bool isNewPlayer = player.PlayerId == 0;
+
+        var success = await dataFactory.SavePlayerAsync(player);
+
+        if (success)
+        {
+            if (isNewPlayer)
+            {
+                Snackbar.Add("Player added successfully!", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("Player updated successfully!", Severity.Success);
+            }
+            await LoadDataAsync();
+            ResetForm();
+        }
+        else
+        {
+            Snackbar.Add("Failed to save player. Please try again.", Severity.Error);
+        }
+    }
+
+    private void ResetForm()
+    {
+        player = new WPL_Player();
+    }
+}

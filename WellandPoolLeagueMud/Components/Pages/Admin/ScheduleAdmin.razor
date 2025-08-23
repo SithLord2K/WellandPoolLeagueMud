@@ -1,0 +1,189 @@
+﻿@page "/admin/schedules"
+@using WellandPoolLeagueMud.Data.Services
+@using WellandPoolLeagueMud.Data.Models
+@using MudBlazor
+@inject ISnackbar Snackbar
+@inject IDataFactory dataFactory
+
+<PageTitle>Edit Schedule</PageTitle>
+
+<MudContainer>
+    <MudGrid Justify="Justify.Center" Spacing="4">
+        <MudItem xs="12" sm="8" md="6">
+            <MudPaper Class="pa-4">
+                <MudText Typo="Typo.h5" Class="mb-4">Edit Schedule</MudText>
+                <MudForm>
+                    <MudGrid>
+                        @if (isLoading)
+                        {
+                            <MudItem xs="12" Class="d-flex justify-center py-8">
+                                <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+                            </MudItem>
+                        }
+                        else
+                        {
+                            <MudItem xs="12">
+                                <MudSelect T="int?"
+                                           Label="Select Schedule to Edit"
+                                           Value="schedule.ScheduleId"
+                                           ValueChanged="@LoadSchedule"
+                                           Variant="Variant.Filled">
+                                    <MudSelectItem T="int?" Value="null">Create New Schedule</MudSelectItem>
+                                    @if (allSchedules is not null && allTeams is not null)
+                                    {
+                                        @foreach (var s in allSchedules)
+                                        {
+                                            var homeTeamName = allTeams.FirstOrDefault(x => x.TeamId == s.HomeTeamId)?.TeamName ?? "N/A";
+                                            var awayTeamName = allTeams.FirstOrDefault(x => x.TeamId == s.AwayTeamId)?.TeamName ?? "N/A";
+                                            <MudSelectItem T="int?" Value="@s.ScheduleId">
+                                                Week @s.WeekNumber, Date: @s.Date.ToShortDateString(), Home: @homeTeamName, Away: @awayTeamName
+                                            </MudSelectItem>
+                                        }
+                                    }
+                                </MudSelect>
+                            </MudItem>
+
+                            <MudItem xs="12">
+                                <MudDatePicker Label="Date"
+                                               Date="schedule.Date"
+                                               IsDateDisabledFunc="@((DateTime dt) => dt.DayOfWeek != DayOfWeek.Tuesday)"
+                                               DateFormat="yyyy MMMM"
+                                               Variant="Variant.Filled" />
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudSelect T="int"
+                                           Label="Home Team"
+                                           @bind-Value="schedule.HomeTeamId"
+                                           Variant="Variant.Filled">
+                                    <MudSelectItem T="int" Value="0">Select Home Team</MudSelectItem>
+                                    @if (allTeams is not null)
+                                    {
+                                        @foreach (var team in allTeams)
+                                        {
+                                            <MudSelectItem T="int" Value="@team.TeamId">@team.TeamName</MudSelectItem>
+                                        }
+                                    }
+                                </MudSelect>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudSelect T="int"
+                                           Label="Away Team"
+                                           @bind-Value="schedule.AwayTeamId"
+                                           Variant="Variant.Filled">
+                                    <MudSelectItem T="int" Value="0">Select Away Team</MudSelectItem>
+                                    @if (allTeams is not null)
+                                    {
+                                        @foreach (var team in allTeams)
+                                        {
+                                            <MudSelectItem T="int" Value="@team.TeamId">@team.TeamName</MudSelectItem>
+                                        }
+                                    }
+                                </MudSelect>
+                            </MudItem>
+
+                            <MudItem xs="12">
+                                <MudNumericField T="int?"
+                                                 Label="Table #"
+                                                 @bind-Value="schedule.TableNumber"
+                                                 Min="0"
+                                                 Max="3"
+                                                 Variant="Variant.Filled" />
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudCheckBox Value="schedule.Playoffs"
+                                             Label="Playoffs"
+                                             Color="Color.Primary" />
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudNumericField T="int?"
+                                                 Label="Week #"
+                                                 Value="schedule.WeekNumber"
+                                                 Min="0"
+                                                 Variant="Variant.Filled" />
+                            </MudItem>
+                        }
+
+                        <MudItem xs="12" Class="d-flex justify-start gap-4 mt-4">
+                            <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="SaveScheduleAsync">Save Schedule</MudButton>
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ResetForm">Reset</MudButton>
+                        </MudItem>
+                    </MudGrid>
+                </MudForm>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+@code {
+    private WPL_Schedule schedule = new();
+    private List<WPL_Team>? allTeams;
+    private List<WPL_Schedule>? allSchedules;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            isLoading = true;
+            allSchedules = await dataFactory.GetSchedulesAsync();
+            allTeams = await dataFactory.GetTeamsAsync();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void LoadSchedule(int? scheduleId)
+    {
+        if (scheduleId.HasValue && allSchedules is not null)
+        {
+            schedule = allSchedules.FirstOrDefault(s => s.ScheduleId == scheduleId) ?? new WPL_Schedule();
+        }
+        else
+        {
+            ResetForm();
+        }
+    }
+
+    private async Task SaveScheduleAsync()
+    {
+        if (schedule.HomeTeamId == schedule.AwayTeamId)
+        {
+            Snackbar.Add("Home Team and Away Team cannot be the same.", Severity.Error);
+            return;
+        }
+
+        // The logic for handling table numbers and playoffs is now handled
+        // directly by the model and the UI, which is a much cleaner approach.
+
+        var isNewSchedule = schedule.ScheduleId == 0;
+        var response = await dataFactory.AddOrUpdateScheduleAsync(schedule);
+        
+        if (response)
+        {
+            var message = isNewSchedule ? "Schedule saved successfully!" : "Schedule updated successfully!";
+            Snackbar.Add(message, Severity.Success);
+            await LoadDataAsync();
+            ResetForm();
+        }
+        else
+        {
+            Snackbar.Add("Failed to save schedule.", Severity.Error);
+        }
+    }
+
+    private void ResetForm()
+    {
+        schedule = new WPL_Schedule();
+    }
+}
