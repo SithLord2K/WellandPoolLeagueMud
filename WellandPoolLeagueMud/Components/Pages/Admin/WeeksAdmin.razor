@@ -1,4 +1,4 @@
-﻿@page "/admin/weeks"
+﻿@* @page "/admin/weeks"
 @attribute [Authorize(Roles = "League_Admin, Super_User")]
 @using WellandPoolLeagueMud.Data.Services
 @using WellandPoolLeagueMud.Data.Models
@@ -119,9 +119,9 @@
 </MudContainer>
 
 @code {
-    private WPL_Schedule schedule = new();
+    private Schedule schedule = new();
     private List<WPL_Team>? allTeams;
-    private List<WPL_Schedule>? allSchedules;
+    private List<Schedule>? allSchedules;
     private bool isLoading = true;
 
     protected override async Task OnInitializedAsync()
@@ -145,14 +145,14 @@
 
     private void ResetForm()
     {
-        schedule = new WPL_Schedule();
+        schedule = new Schedule();
     }
 
     private void OnScheduleSelected(int scheduleId)
     {
         if (scheduleId > 0 && allSchedules != null)
         {
-            schedule = allSchedules.FirstOrDefault(s => s.ScheduleId == scheduleId) ?? new WPL_Schedule();
+            schedule = allSchedules.FirstOrDefault(s => s.ScheduleId == scheduleId) ?? new Schedule();
         }
         else
         {
@@ -183,4 +183,4 @@
             Snackbar.Add("Failed to save week. Please try again.", Severity.Error);
         }
     }
-}
+} *@

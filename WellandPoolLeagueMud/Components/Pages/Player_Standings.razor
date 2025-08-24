@@ -8,51 +8,122 @@
 
 <PageTitle>Player Standings</PageTitle>
 
-@if (playerData is not null)
+@if (playerStandings is not null)
 {
-    <MudDataGrid TItem="PlayerViewModel"
-                 Items="@playerData"
+    <MudDataGrid TItem="PlayerStandingViewModel"
+                 Items="@playerStandings"
                  Filterable="true"
                  Sortable="true"
                  Striped="true"
                  Hover="true"
                  Bordered="true"
                  Class="pb-2">
-
         <ToolBarContent>
             <MudText Typo="Typo.h6">Player Standings</MudText>
             <MudSpacer />
-            <MudTextField T="string" Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0" />
+            <MudTextField @bind-Value="searchString"
+                          Placeholder="Search players..."
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          IconSize="Size.Medium"
+                          Class="mt-0"
+                          Immediate="true" />
         </ToolBarContent>
         <Columns>
+            <PropertyColumn Property="x => x.Rank" Title="Rank" Sortable="false" />
+            <PropertyColumn Property="x => x.PlayerName" Title="Player Name" Filterable="true" />
             <PropertyColumn Property="x => x.TeamName" Title="Team" Filterable="true" />
-            <PropertyColumn Property="x => x.FirstName" Title="First Name" />
-            <PropertyColumn Property="x => x.LastName" Title="Last Name" />
             <PropertyColumn Property="x => x.GamesPlayed" Title="Games Played" />
-            <PropertyColumn Property="x => x.FramesWon" Title="Games Won" />
-            <PropertyColumn Property="x => x.FramesLost" Title="Games Lost" />
-            <PropertyColumn Property="x => x.Average" Title="Average" Format="P2" />
+            <PropertyColumn Property="x => x.Wins" Title="Games Won" />
+            <PropertyColumn Property="x => x.Losses" Title="Games Lost" />
+            <TemplateColumn Title="Win %" Sortable="true" SortBy="@(x => x.WinPercentage)">
+                <CellTemplate>
+                    @if (context.Item.GamesPlayed > 0)
+                    {
+                        <MudChip Color="@GetWinPercentageColor(context.Item.WinPercentage)" Size="Size.Small">
+                            @context.Item.WinPercentage.ToString("F1")%
+                        </MudChip>
+                    }
+                    else
+                    {
+                        <MudText>-</MudText>
+                    }
+                </CellTemplate>
+            </TemplateColumn>
         </Columns>
         <PagerContent>
-            <MudDataGridPager T="PlayerViewModel" />
+            <MudDataGridPager T="PlayerStandingViewModel" />
         </PagerContent>
         <NoRecordsContent>
             <div class="box">
-                No Player Stats Found!
+                <MudIcon Icon="@Icons.Material.Filled.SportsScore" Style="font-size: 3rem; color: var(--mud-palette-text-secondary);" />
+                <MudText Typo="Typo.h6" Class="mt-2">No Player Stats Found!</MudText>
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                    Player standings will appear here once games are recorded.
+                </MudText>
             </div>
         </NoRecordsContent>
     </MudDataGrid>
+}
+else
+{
+    <MudContainer Class="d-flex justify-center align-center" Style="height: 200px;">
+        <MudProgressCircular Indeterminate="true" Size="Size.Large" />
+    </MudContainer>
 }
 
 <ScrollToTopButton />
 
 @code {
-    [Inject] private PDataService pDataService { get; set; } = default!;
+    [Inject] private IPlayerService PlayerService { get; set; } = default!;
 
-    private List<PlayerViewModel>? playerData;
+    private List<PlayerStandingViewModel>? playerStandings;
+    private string searchString = "";
 
     protected override async Task OnInitializedAsync()
     {
-        playerData = await pDataService.GetFullPlayerDataAsync();
+        await LoadPlayerStandings();
+    }
+
+    private async Task LoadPlayerStandings()
+    {
+        try
+        {
+            playerStandings = await PlayerService.GetPlayerStandingsAsync();
+
+            // Apply search filter if needed
+            if (!string.IsNullOrWhiteSpace(searchString))
+            {
+                playerStandings = playerStandings
+                    .Where(p => p.PlayerName.Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
+                               (p.TeamName?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false))
+                    .ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            // Handle error appropriately - you might want to inject ISnackbar for notifications
+            Console.WriteLine($"Error loading player standings: {ex.Message}");
+        }
+    }
+
+    private Color GetWinPercentageColor(decimal winPercentage)
+    {
+        return winPercentage switch
+        {
+            >= 75 => Color.Success,
+            >= 60 => Color.Info,
+            >= 50 => Color.Warning,
+            >= 25 => Color.Secondary,
+            _ => Color.Error
+        };
+    }
+
+    // Optional: Add real-time search functionality
+    private async Task OnSearchChanged(string value)
+    {
+        searchString = value;
+        await LoadPlayerStandings();
+        StateHasChanged();
     }
 }

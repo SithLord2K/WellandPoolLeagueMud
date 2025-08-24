@@ -1,4 +1,4 @@
-﻿@page "/admin/schedules"
+﻿@* @page "/admin/schedules"
 @using WellandPoolLeagueMud.Data.Services
 @using WellandPoolLeagueMud.Data.Models
 @using MudBlazor
@@ -119,9 +119,9 @@
 </MudContainer>
 
 @code {
-    private WPL_Schedule schedule = new();
+    private Schedule schedule = new();
     private List<WPL_Team>? allTeams;
-    private List<WPL_Schedule>? allSchedules;
+    private List<Schedule>? allSchedules;
     private bool isLoading = true;
 
     protected override async Task OnInitializedAsync()
@@ -148,7 +148,7 @@
     {
         if (scheduleId > 0 && allSchedules is not null)
         {
-            schedule = allSchedules.FirstOrDefault(s => s.ScheduleId == scheduleId) ?? new WPL_Schedule();
+            schedule = allSchedules.FirstOrDefault(s => s.ScheduleId == scheduleId) ?? new Schedule();
         }
         else
         {
@@ -185,6 +185,6 @@
 
     private void ResetForm()
     {
-        schedule = new WPL_Schedule();
+        schedule = new Schedule();
     }
-}
+} *@

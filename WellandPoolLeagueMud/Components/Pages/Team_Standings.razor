@@ -4,56 +4,160 @@
 @using WellandPoolLeagueMud.Components.Buttons
 @using WellandPoolLeagueMud.Data.Services
 @using WellandPoolLeagueMud.Data.ViewModels
-@inject StandingService standingService
+@inject ITeamService TeamService
 
 <PageTitle>Team Standings</PageTitle>
 
 @if (teamStandings is not null)
 {
-    @foreach (var divisionGroup in teamStandings.GroupBy(x => x.Division))
-    {
-        <MudText Typo="Typo.h6" Class="my-4">@divisionGroup.Key</MudText>
-        <MudDataGrid TItem="TeamStandingViewModel"
-                     Items="@divisionGroup.OrderByDescending(x => x.TotalFramesWon).ToList()"
-                     Hover="true"
-                     Striped="true"
-                     Dense="false"
-                     Sortable="true">
-            <ToolBarContent>
-                <MudText Typo="Typo.h6">Team Standings</MudText>
-                <MudSpacer />
-                <MudTextField T="string" Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0" />
-            </ToolBarContent>
-            <Columns>
-                <PropertyColumn Property="x => x.TeamName" Title="Team Name" />
-                <PropertyColumn Property="x => x.WeeksWon" Title="Weeks Won" />
-                <PropertyColumn Property="x => x.WeeksLost" Title="Weeks Lost" />
-                <PropertyColumn Property="x => x.TotalFramesWon" Title="Games Won" />
-                <PropertyColumn Property="x => x.TotalFramesLost" Title="Games Lost" />
-            </Columns>
-            <PagerContent>
-                <MudDataGridPager T="TeamStandingViewModel" />
-            </PagerContent>
-            <NoRecordsContent>
-                <div class="box">
-                    No Team Stats Found!
-                </div>
-            </NoRecordsContent>
-        </MudDataGrid>
-    }
+    <MudDataGrid TItem="TeamStandingViewModel"
+                 Items="@teamStandings"
+                 Hover="true"
+                 Striped="true"
+                 Dense="false"
+                 Sortable="true"
+                 Filterable="true"
+                 Bordered="true"
+                 Class="pb-2">
+        <ToolBarContent>
+            <MudText Typo="Typo.h6">Team Standings</MudText>
+            <MudSpacer />
+            <MudTextField @bind-Value="searchString"
+                          Placeholder="Search teams..."
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          IconSize="Size.Medium"
+                          Class="mt-0"
+                          Immediate="true" />
+        </ToolBarContent>
+        <Columns>
+            <PropertyColumn Property="x => x.Rank" Title="Rank" Sortable="false">
+                <CellTemplate>
+                    <MudChip Color="@GetRankColor(context.Item.Rank)" Size="Size.Small" Variant="Variant.Filled">
+                        #@context.Item.Rank
+                    </MudChip>
+                </CellTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.TeamName" Title="Team Name" Filterable="true" />
+            <PropertyColumn Property="x => x.CaptainName" Title="Captain" Filterable="true">
+                <CellTemplate>
+                    @if (!string.IsNullOrEmpty(context.Item.CaptainName))
+                    {
+                        <MudText>@context.Item.CaptainName</MudText>
+                    }
+                    else
+                    {
+                        <MudText Class="mud-text-secondary">No Captain</MudText>
+                    }
+                </CellTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.GamesPlayed" Title="Games Played" />
+            <PropertyColumn Property="x => x.Wins" Title="Games Won" />
+            <PropertyColumn Property="x => x.Losses" Title="Games Lost" />
+            <PropertyColumn Property="x => x.Points" Title="Points" Sortable="true">
+                <CellTemplate>
+                    <MudChip Color="Color.Primary" Size="Size.Small" Variant="Variant.Text">
+                        @context.Item.Points pts
+                    </MudChip>
+                </CellTemplate>
+            </PropertyColumn>
+            <TemplateColumn Title="Win %" Sortable="true" SortBy="@(x => x.WinPercentage)">
+                <CellTemplate>
+                    @if (context.Item.GamesPlayed > 0)
+                    {
+                        <MudChip Color="@GetWinPercentageColor(context.Item.WinPercentage)" Size="Size.Small">
+                            @context.Item.WinPercentage.ToString("F1")%
+                        </MudChip>
+                    }
+                    else
+                    {
+                        <MudText>-</MudText>
+                    }
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+        <PagerContent>
+            <MudDataGridPager T="TeamStandingViewModel" />
+        </PagerContent>
+        <NoRecordsContent>
+            <div class="box">
+                <MudIcon Icon="@Icons.Material.Filled.Groups" Style="font-size: 3rem; color: var(--mud-palette-text-secondary);" />
+                <MudText Typo="Typo.h6" Class="mt-2">No Team Stats Found!</MudText>
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                    Team standings will appear here once games are recorded.
+                </MudText>
+            </div>
+        </NoRecordsContent>
+    </MudDataGrid>
 }
 else
 {
-    <MudProgressCircular Color="Color.Primary" Indeterminate="true" Class="m-4" />
+    <MudContainer Class="d-flex justify-center align-center" Style="height: 200px;">
+        <MudProgressCircular Indeterminate="true" Size="Size.Large" />
+    </MudContainer>
 }
 
 <ScrollToTopButton />
 
 @code {
     private List<TeamStandingViewModel>? teamStandings;
+    private string searchString = "";
 
     protected override async Task OnInitializedAsync()
     {
-        teamStandings = await standingService.GetTeamStandingsAsync();
+        await LoadTeamStandings();
+    }
+
+    private async Task LoadTeamStandings()
+    {
+        try
+        {
+            teamStandings = await TeamService.GetTeamStandingsAsync();
+
+            // Apply search filter if needed
+            if (!string.IsNullOrWhiteSpace(searchString))
+            {
+                teamStandings = teamStandings
+                    .Where(t => t.TeamName.Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
+                               (t.CaptainName?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false))
+                    .ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            // Handle error appropriately - you might want to inject ISnackbar for notifications
+            Console.WriteLine($"Error loading team standings: {ex.Message}");
+        }
+    }
+
+    private Color GetRankColor(int rank)
+    {
+        return rank switch
+        {
+            1 => Color.Warning,     // Gold for 1st
+            2 => Color.Secondary,   // Silver for 2nd
+            3 => Color.Tertiary,    // Bronze for 3rd
+            _ => Color.Default
+        };
+    }
+
+    private Color GetWinPercentageColor(decimal winPercentage)
+    {
+        return winPercentage switch
+        {
+            >= 75 => Color.Success,
+            >= 60 => Color.Info,
+            >= 50 => Color.Warning,
+            >= 25 => Color.Secondary,
+            _ => Color.Error
+        };
+    }
+
+    // Optional: Add real-time search functionality
+    private async Task OnSearchChanged(string value)
+    {
+        searchString = value;
+        await LoadTeamStandings();
+        StateHasChanged();
     }
 }

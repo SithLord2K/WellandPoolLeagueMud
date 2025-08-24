@@ -3,64 +3,207 @@
 @using WellandPoolLeagueMud.Components.Buttons
 @using WellandPoolLeagueMud.Data.Services
 @using WellandPoolLeagueMud.Data.ViewModels
-@using WellandPoolLeagueMud.Data.Models
 @using MudBlazor
+@inject ITeamService TeamService
 
 <PageTitle>Team Rosters</PageTitle>
 
-@if (teamRosters is not null)
+@if (teams is not null)
 {
-    @foreach (var team in teamRosters.Where(t => t.TeamName != "Bye"))
-    {
-        <MudCard Class="mb-4">
-            <MudCardHeader>
-                <MudText Typo="Typo.h5" Align="Align.Center" Class="m-auto">@team.TeamName</MudText>
-            </MudCardHeader>
-            <MudCardContent>
-                <MudTable Items="@team.Players"
-                          Hover="true"
-                          Striped="true"
-                          Dense="true"
-                          T="WPL_Player">
-                    <HeaderContent>
-                        <MudTh>Player Name</MudTh>
-                        <MudTh>Games Played</MudTh>
-                        <MudTh>Captain?</MudTh>
-                    </HeaderContent>
-                    <RowTemplate>
-                        <MudTd DataLabel="Player Name">@context.FirstName @context.LastName</MudTd>
-                        <MudTd DataLabel="Games Played" Style="text-align:center;">
-                            @context.GamesPlayed
-                        </MudTd>
-                        <MudTd DataLabel="Captain?" Style="text-align:center;">
-                            @if (context.IsCaptain)
+    <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="px-2">
+        <div class="d-flex justify-center mb-4">
+            <MudTextField @bind-Value="searchString" 
+                         Placeholder="Search teams or players..." 
+                         Adornment="Adornment.Start" 
+                         AdornmentIcon="@Icons.Material.Filled.Search" 
+                         IconSize="Size.Medium" 
+                         Class="mt-0"
+                         Style="max-width: 400px;"
+                         Immediate="true" />
+        </div>
+
+        @foreach (var team in filteredTeams)
+        {
+            <MudCard Class="mb-4" Elevation="3">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <div class="d-flex align-center justify-space-between">
+                            <MudText Typo="Typo.h5" Color="Color.Primary">@team.TeamName</MudText>
+                            @if (!string.IsNullOrEmpty(team.CaptainName))
                             {
-                                <MudIcon Icon="@Icons.Material.Filled.Check" Color="Color.Success" />
+                                <MudChip T="string" Icon="@Icons.Material.Filled.Star" Color="Color.Warning" Size="Size.Small" Variant="Variant.Filled">
+                                    Captain: @team.CaptainName
+                                </MudChip>
                             }
-                        </MudTd>
-                    </RowTemplate>
-                </MudTable>
-            </MudCardContent>
-            <MudCardActions Class="d-flex justify-end">
-                <MudText Typo="Typo.subtitle2">Roster Size: @team.Players.Count()</MudText>
-            </MudCardActions>
-        </MudCard>
-    }
+                        </div>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent Class="px-0">
+                    @if (team.Players.Any())
+                    {
+                        <MudTable Items="@team.Players"
+                                  Hover="true"
+                                  Striped="true"
+                                  Dense="true"
+                                  T="PlayerViewModel">
+                            <HeaderContent>
+                                <MudTh>Player Name</MudTh>
+                                <MudTh Style="text-align:center;">Games Played</MudTh>
+                                <MudTh Style="text-align:center;">Games Won</MudTh>
+                                <MudTh Style="text-align:center;">Games Lost</MudTh>
+                                <MudTh Style="text-align:center;">Win %</MudTh>
+                                <MudTh Style="text-align:center;">Captain</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd DataLabel="Player Name">
+                                    <div class="d-flex align-center">
+                                        <MudAvatar Color="Color.Primary" Size="Size.Small" Class="mr-2">
+                                            @GetPlayerInitials(context.FullName)
+                                        </MudAvatar>
+                                        <MudText>@context.FullName</MudText>
+                                    </div>
+                                </MudTd>
+                                <MudTd DataLabel="Games Played" Style="text-align:center;">
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@context.GamesPlayed</MudChip>
+                                </MudTd>
+                                <MudTd DataLabel="Games Won" Style="text-align:center;">
+                                    <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Text">@context.GamesWon</MudChip>
+                                </MudTd>
+                                <MudTd DataLabel="Games Lost" Style="text-align:center;">
+                                    <MudChip T="string" Color="Color.Error" Size="Size.Small" Variant="Variant.Text">@context.GamesLost</MudChip>
+                                </MudTd>
+                                <MudTd DataLabel="Win %" Style="text-align:center;">
+                                    @if (context.GamesPlayed > 0)
+                                    {
+                                        <MudChip T="string" Color="@GetWinPercentageColor(context.WinPercentage)" Size="Size.Small">
+                                            @context.WinPercentage.ToString("F1")%
+                                        </MudChip>
+                                    }
+                                    else
+                                    {
+                                        <MudText Class="mud-text-secondary">-</MudText>
+                                    }
+                                </MudTd>
+                                <MudTd DataLabel="Captain" Style="text-align:center;">
+                                    @if (team.CaptainPlayerId == context.PlayerId)
+                                    {
+                                        <MudIcon Icon="@Icons.Material.Filled.Star" Color="Color.Warning" />
+                                    }
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+                    else
+                    {
+                        <div class="d-flex flex-column align-center pa-4">
+                            <MudIcon Icon="@Icons.Material.Filled.PersonOff" Style="font-size: 2rem; color: var(--mud-palette-text-secondary);" />
+                            <MudText Typo="Typo.body2" Class="mud-text-secondary mt-2">No players assigned to this team</MudText>
+                        </div>
+                    }
+                </MudCardContent>
+                <MudCardActions Class="d-flex justify-space-between px-4">
+                    <MudText Typo="Typo.subtitle2" Class="mud-text-secondary">
+                        Roster Size: @team.Players.Count
+                    </MudText>
+                    @if (team.Players.Any())
+                    {
+                        <div class="d-flex align-center">
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary mr-2">Team Record:</MudText>
+                            <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Text">@team.GamesWon W</MudChip>
+                            <MudChip T="string" Color="Color.Error" Size="Size.Small" Variant="Variant.Text" Class="ml-1">@team.GamesLost L</MudChip>
+                        </div>
+                    }
+                </MudCardActions>
+            </MudCard>
+        }
+
+        @if (!filteredTeams.Any() && !string.IsNullOrWhiteSpace(searchString))
+        {
+            <MudCard Class="pa-4">
+                <div class="d-flex flex-column align-center">
+                    <MudIcon Icon="@Icons.Material.Filled.SearchOff" Style="font-size: 3rem; color: var(--mud-palette-text-secondary);" />
+                    <MudText Typo="Typo.h6" Class="mt-2">No teams found</MudText>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        Try adjusting your search terms
+                    </MudText>
+                </div>
+            </MudCard>
+        }
+    </MudContainer>
 }
 else
 {
-    <MudProgressCircular Color="Color.Primary" Indeterminate="true" Class="m-4" />
+    <MudContainer Class="d-flex justify-center align-center" Style="height: 400px;">
+        <div class="d-flex flex-column align-center">
+            <MudProgressCircular Indeterminate="true" Size="Size.Large" />
+            <MudText Typo="Typo.body2" Class="mt-4 mud-text-secondary">Loading team rosters...</MudText>
+        </div>
+    </MudContainer>
 }
 
 <ScrollToTopButton />
 
 @code {
-    [Inject] private RosterHelper rosterHelper { get; set; } = default!;
+    private List<TeamViewModel>? teams;
+    private string searchString = "";
 
-    private List<TeamRoster>? teamRosters;
+    private IEnumerable<TeamViewModel> filteredTeams => 
+        teams?.Where(t => string.IsNullOrWhiteSpace(searchString) || 
+                         t.TeamName.Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
+                         t.Players.Any(p => p.FullName.Contains(searchString, StringComparison.OrdinalIgnoreCase))) ?? 
+        Enumerable.Empty<TeamViewModel>();
 
     protected override async Task OnInitializedAsync()
     {
-        teamRosters = await rosterHelper.GetTeamRostersAsync();
+        await LoadTeamRosters();
+    }
+
+    private async Task LoadTeamRosters()
+    {
+        try
+        {
+            // Get all teams
+            teams = await TeamService.GetAllTeamsAsync();
+            
+            // Load roster for each team
+            if (teams != null)
+            {
+                foreach (var team in teams)
+                {
+                    team.Players = (await TeamService.GetTeamRosterAsync(team.TeamId)).ToList();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // Handle error appropriately - you might want to inject ISnackbar for notifications
+            Console.WriteLine($"Error loading team rosters: {ex.Message}");
+        }
+    }
+
+    private string GetPlayerInitials(string fullName)
+    {
+        if (string.IsNullOrWhiteSpace(fullName))
+            return "?";
+
+        var parts = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
+        else if (parts.Length == 1)
+            return $"{parts[0][0]}".ToUpper();
+        
+        return "?";
+    }
+
+    private Color GetWinPercentageColor(decimal winPercentage)
+    {
+        return winPercentage switch
+        {
+            >= 75 => Color.Success,
+            >= 60 => Color.Info,
+            >= 50 => Color.Warning,
+            >= 25 => Color.Secondary,
+            _ => Color.Error
+        };
     }
 }
