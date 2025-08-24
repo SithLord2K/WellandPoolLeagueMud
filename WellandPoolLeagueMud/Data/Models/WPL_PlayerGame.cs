@@ -11,8 +11,6 @@ namespace WellandPoolLeagueMud.Data.Models
         [Required]
         public int PlayerId { get; set; }
         [Required]
-        public int ScheduleId { get; set; }
-        [Required]
         public int FramesWon { get; set; }
         [Required]
         public int FramesLost { get; set; }
@@ -21,7 +19,5 @@ namespace WellandPoolLeagueMud.Data.Models
         [ForeignKey("PlayerId")]
         public virtual WPL_Player? Player { get; set; }
 
-        [ForeignKey("ScheduleId")]
-        public virtual WPL_Schedule? Schedule { get; set; }
     }
 }

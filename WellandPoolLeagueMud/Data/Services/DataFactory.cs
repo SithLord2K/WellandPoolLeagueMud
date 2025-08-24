@@ -3,100 +3,174 @@ using Microsoft.EntityFrameworkCore;
 using WellandPoolLeagueMud.Data.Models;
 using WellandPoolLeagueMud.Data;
 using System.Reflection; // Required for the generic Save/Delete methods
+using Microsoft.Extensions.Logging; // Required for logging
 
 namespace WellandPoolLeagueMud.Data.Services
 {
-    public class DataFactory(IDbContextFactory<WPLMudDBContext> contextFactory) : IDataFactory
+    public class DataFactory : IDataFactory
     {
-        // === GENERIC METHODS FOR REUSABILITY ===
+        private readonly IDbContextFactory<WPLMudDBContext> contextFactory;
+        private readonly ILogger<DataFactory> _logger;
 
-        // Gets a list of entities of a specific type.
-        private async Task<List<T>> GetListAsync<T>() where T : class =>
-            await (await contextFactory.CreateDbContextAsync()).Set<T>().ToListAsync();
-
-        // Gets a single entity by its ID. Assumes the entity has a primary key named "Id".
-        private async Task<T?> GetSingleAsync<T>(int id) where T : class =>
-            await (await contextFactory.CreateDbContextAsync()).Set<T>().FindAsync(id);
-
-        // A generic save method that handles both adding and updating.
-        private async Task<bool> SaveEntityAsync<T>(T entity, string idPropertyName) where T : class
+        public DataFactory(IDbContextFactory<WPLMudDBContext> contextFactory, ILogger<DataFactory> logger)
         {
-            await using var context = await contextFactory.CreateDbContextAsync();
-            try
-            {
-                var idProperty = typeof(T).GetProperty(idPropertyName);
-                var idValue = (int?)idProperty?.GetValue(entity);
-
-                if (idValue is null || idValue == 0)
-                {
-                    context.Entry(entity).State = EntityState.Added;
-                }
-                else
-                {
-                    context.Entry(entity).State = EntityState.Modified;
-                }
-                await context.SaveChangesAsync();
-                return true;
-            }
-            catch (Exception)
-            {
-                return false;
-            }
+            this.contextFactory = contextFactory;
+            _logger = logger;
         }
 
-        // A generic method to delete an entity by ID.
-        private async Task<bool> DeleteEntityAsync<T>(int id) where T : class
+        public async Task<List<WPL_Player>> GetPlayersAsync()
         {
-            await using var context = await contextFactory.CreateDbContextAsync();
-            try
-            {
-                var entity = await context.Set<T>().FindAsync(id);
-                if (entity == null) return false;
-
-                context.Set<T>().Remove(entity);
-                await context.SaveChangesAsync();
-                return true;
-            }
-            catch (Exception)
-            {
-                return false;
-            }
+            using var context = contextFactory.CreateDbContext();
+            return await context.Players.ToListAsync();
         }
 
-        // === IMPLEMENTATION OF IDataFactory ===
+        public async Task<WPL_Player?> GetSinglePlayerAsync(int id)
+        {
+            using var context = contextFactory.CreateDbContext();
+            return await context.Players.FindAsync(id);
+        }
 
-        // Players
-        public async Task<List<WPL_Player>> GetPlayersAsync() => await GetListAsync<WPL_Player>();
-        public async Task<WPL_Player?> GetSinglePlayerAsync(int id) => await GetSingleAsync<WPL_Player>(id);
-        public async Task<bool> SavePlayerAsync(WPL_Player player) => await SaveEntityAsync(player, "PlayerId");
-        public async Task<bool> DeletePlayerAsync(int id) => await DeleteEntityAsync<WPL_Player>(id);
+        public async Task<bool> SavePlayerAsync(WPL_Player player)
+        {
+            using var context = contextFactory.CreateDbContext();
+            if (player.PlayerId == 0)
+                context.Players.Add(player);
+            else
+                context.Players.Update(player);
+            return await context.SaveChangesAsync() > 0;
+        }
 
-        // Teams
-        public async Task<List<WPL_Team>> GetTeamsAsync() => await GetListAsync<WPL_Team>();
-        public async Task<WPL_Team?> GetSingleTeamAsync(int Id) => await GetSingleAsync<WPL_Team>(Id);
-        public async Task<bool> SaveTeamAsync(WPL_Team team) => await SaveEntityAsync(team, "TeamId");
-        public async Task<bool> DeleteTeamAsync(int id) => await DeleteEntityAsync<WPL_Team>(id);
+        public async Task<bool> DeletePlayerAsync(int id)
+        {
+            using var context = contextFactory.CreateDbContext();
+            var player = await context.Players.FindAsync(id);
+            if (player == null) return false;
+            context.Players.Remove(player);
+            return await context.SaveChangesAsync() > 0;
+        }
 
-        // Schedules
-        public async Task<List<WPL_Schedule>> GetSchedulesAsync() => await GetListAsync<WPL_Schedule>();
-        public async Task<WPL_Schedule?> GetSingleScheduleAsync(int Id) => await GetSingleAsync<WPL_Schedule>(Id);
-        public async Task<bool> AddOrUpdateScheduleAsync(WPL_Schedule schedule) => await SaveEntityAsync(schedule, "ScheduleId");
-        public async Task<bool> DeleteScheduleAsync(int id) => await DeleteEntityAsync<WPL_Schedule>(id);
+        public async Task<List<WPL_Team>> GetTeamsAsync()
+        {
+            using var context = contextFactory.CreateDbContext();
+            return await context.Teams.ToListAsync();
+        }
 
-        // Player Games
-        public async Task<List<WPL_PlayerGame>> GetAllPlayerGamesAsync() => await GetListAsync<WPL_PlayerGame>();
+        public async Task<WPL_Team?> GetSingleTeamAsync(int id)
+        {
+            using var context = contextFactory.CreateDbContext();
+            return await context.Teams.FindAsync(id);
+        }
+
+        public async Task<bool> SaveTeamAsync(WPL_Team team)
+        {
+            using var context = contextFactory.CreateDbContext();
+            if (team.TeamId == 0)
+                context.Teams.Add(team);
+            else
+                context.Teams.Update(team);
+            return await context.SaveChangesAsync() > 0;
+        }
+
+        public async Task<bool> DeleteTeamAsync(int id)
+        {
+            using var context = contextFactory.CreateDbContext();
+            var team = await context.Teams.FindAsync(id);
+            if (team == null) return false;
+            context.Teams.Remove(team);
+            return await context.SaveChangesAsync() > 0;
+        }
+
+        public async Task<List<WPL_Schedule>> GetSchedulesAsync()
+        {
+            using var context = contextFactory.CreateDbContext();
+            return await context.Schedules.ToListAsync();
+        }
+
+        public async Task<WPL_Schedule?> GetSingleScheduleAsync(int id)
+        {
+            using var context = contextFactory.CreateDbContext();
+            return await context.Schedules.FindAsync(id);
+        }
+
+        public async Task<bool> AddOrUpdateScheduleAsync(WPL_Schedule schedule)
+        {
+            using var context = contextFactory.CreateDbContext();
+            if (schedule.ScheduleId == 0)
+                context.Schedules.Add(schedule);
+            else
+                context.Schedules.Update(schedule);
+            return await context.SaveChangesAsync() > 0;
+        }
+
+        public async Task<bool> DeleteScheduleAsync(int id)
+        {
+            using var context = contextFactory.CreateDbContext();
+            var schedule = await context.Schedules.FindAsync(id);
+            if (schedule == null) return false;
+            context.Schedules.Remove(schedule);
+            return await context.SaveChangesAsync() > 0;
+        }
+
+        public async Task<List<WPL_PlayerGame>> GetAllPlayerGamesAsync()
+        {
+            using var context = contextFactory.CreateDbContext();
+            return await context.PlayerGames.ToListAsync();
+        }
+
         public async Task<List<WPL_PlayerGame>> GetPlayerGamesByPlayerIdAsync(int playerId)
         {
-            await using var context = await contextFactory.CreateDbContextAsync();
+            using var context = contextFactory.CreateDbContext();
             return await context.PlayerGames.Where(pg => pg.PlayerId == playerId).ToListAsync();
         }
-        public async Task<bool> SavePlayerGameAsync(WPL_PlayerGame playerGame) => await SaveEntityAsync(playerGame, "PlayerGameId");
-        public async Task<bool> DeletePlayerGameAsync(int id) => await DeleteEntityAsync<WPL_PlayerGame>(id);
 
-        // Weekly Winners
-        public async Task<List<WPL_WeeklyWinner>> GetWeeklyWinnersAsync() => await GetListAsync<WPL_WeeklyWinner>();
-        public async Task<WPL_WeeklyWinner?> GetSingleWeeklyWinnerAsync(int id) => await GetSingleAsync<WPL_WeeklyWinner>(id);
-        public async Task<bool> AddOrUpdateWeeklyWinnerAsync(WPL_WeeklyWinner weeklyWinner) => await SaveEntityAsync(weeklyWinner, "WeeklyWinnerId");
-        public async Task<bool> DeleteWeeklyWinnerAsync(int id) => await DeleteEntityAsync<WPL_WeeklyWinner>(id);
+        public async Task<bool> SavePlayerGameAsync(WPL_PlayerGame playerGame)
+        {
+            using var context = contextFactory.CreateDbContext();
+            if (playerGame.PlayerGameId == 0)
+                context.PlayerGames.Add(playerGame);
+            else
+                context.PlayerGames.Update(playerGame);
+            return await context.SaveChangesAsync() > 0;
+        }
+
+        public async Task<bool> DeletePlayerGameAsync(int id)
+        {
+            using var context = contextFactory.CreateDbContext();
+            var playerGame = await context.PlayerGames.FindAsync(id);
+            if (playerGame == null) return false;
+            context.PlayerGames.Remove(playerGame);
+            return await context.SaveChangesAsync() > 0;
+        }
+
+        public async Task<List<WPL_WeeklyWinner>> GetWeeklyWinnersAsync()
+        {
+            using var context = contextFactory.CreateDbContext();
+            return await context.WeeklyWinners.ToListAsync();
+        }
+
+        public async Task<WPL_WeeklyWinner?> GetSingleWeeklyWinnerAsync(int id)
+        {
+            using var context = contextFactory.CreateDbContext();
+            return await context.WeeklyWinners.FindAsync(id);
+        }
+
+        public async Task<bool> AddOrUpdateWeeklyWinnerAsync(WPL_WeeklyWinner weeklyWinner)
+        {
+            using var context = contextFactory.CreateDbContext();
+            if (weeklyWinner.WeeklyWinnerId == 0)
+                context.WeeklyWinners.Add(weeklyWinner);
+            else
+                context.WeeklyWinners.Update(weeklyWinner);
+            return await context.SaveChangesAsync() > 0;
+        }
+
+        public async Task<bool> DeleteWeeklyWinnerAsync(int id)
+        {
+            using var context = contextFactory.CreateDbContext();
+            var weeklyWinner = await context.WeeklyWinners.FindAsync(id);
+            if (weeklyWinner == null) return false;
+            context.WeeklyWinners.Remove(weeklyWinner);
+            return await context.SaveChangesAsync() > 0;
+        }
     }
 }

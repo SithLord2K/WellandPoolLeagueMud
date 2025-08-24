@@ -53,11 +53,6 @@ namespace WellandPoolLeagueMud.Data
                 .WithMany(p => p.PlayerGames)
                 .HasForeignKey(pg => pg.PlayerId);
 
-            // PlayerGame-Schedule relationship
-            modelBuilder.Entity<WPL_PlayerGame>()
-                .HasOne(pg => pg.Schedule)
-                .WithMany()
-                .HasForeignKey(pg => pg.ScheduleId);
         }
     }
 }

@@ -23,19 +23,19 @@
                         else
                         {
                             <MudItem xs="12">
-                                <MudSelect T="int?"
+                                <MudSelect T="int"
                                            Label="Select Schedule to Edit"
                                            Value="schedule.ScheduleId"
                                            ValueChanged="@LoadSchedule"
                                            Variant="Variant.Filled">
-                                    <MudSelectItem T="int?" Value="null">Create New Schedule</MudSelectItem>
+                                    <MudSelectItem T="int">Create New Schedule</MudSelectItem>
                                     @if (allSchedules is not null && allTeams is not null)
                                     {
                                         @foreach (var s in allSchedules)
                                         {
                                             var homeTeamName = allTeams.FirstOrDefault(x => x.TeamId == s.HomeTeamId)?.TeamName ?? "N/A";
                                             var awayTeamName = allTeams.FirstOrDefault(x => x.TeamId == s.AwayTeamId)?.TeamName ?? "N/A";
-                                            <MudSelectItem T="int?" Value="@s.ScheduleId">
+                                            <MudSelectItem T="int" Value="@s.ScheduleId">
                                                 Week @s.WeekNumber, Date: @s.Date.ToShortDateString(), Home: @homeTeamName, Away: @awayTeamName
                                             </MudSelectItem>
                                         }
@@ -47,7 +47,7 @@
                                 <MudDatePicker Label="Date"
                                                Date="schedule.Date"
                                                IsDateDisabledFunc="@((DateTime dt) => dt.DayOfWeek != DayOfWeek.Tuesday)"
-                                               DateFormat="yyyy MMMM"
+                                               DateFormat="MM-dd-yyyy"
                                                Variant="Variant.Filled" />
                             </MudItem>
 
@@ -99,9 +99,9 @@
                             </MudItem>
 
                             <MudItem xs="12" sm="6">
-                                <MudNumericField T="int?"
+                                <MudNumericField T="int"
                                                  Label="Week #"
-                                                 Value="schedule.WeekNumber"
+                                                 @bind-Value="schedule.WeekNumber"
                                                  Min="0"
                                                  Variant="Variant.Filled" />
                             </MudItem>
@@ -126,6 +126,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        schedule.Date = DateTime.Today;
         await LoadDataAsync();
     }
 
@@ -143,9 +144,9 @@
         }
     }
 
-    private void LoadSchedule(int? scheduleId)
+    private void LoadSchedule(int scheduleId)
     {
-        if (scheduleId.HasValue && allSchedules is not null)
+        if (scheduleId > 0 && allSchedules is not null)
         {
             schedule = allSchedules.FirstOrDefault(s => s.ScheduleId == scheduleId) ?? new WPL_Schedule();
         }

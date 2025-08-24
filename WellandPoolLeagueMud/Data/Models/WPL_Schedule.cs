@@ -11,8 +11,6 @@ namespace WellandPoolLeagueMud.Data.Models
         [Required]
         public int WeekNumber { get; set; }
         [Required]
-        public DateTime GameDate { get; set; }
-        [Required]
         public int HomeTeamId { get; set; }
         [Required]
         public int AwayTeamId { get; set; }
@@ -26,7 +24,7 @@ namespace WellandPoolLeagueMud.Data.Models
         [ForeignKey("AwayTeamId")]
         public virtual WPL_Team? AwayTeam { get; set; }
 
-        public int? WinningTeamId { get; set; }
+        public int WinningTeamId { get; set; }
 
         public bool Forfeit { get; set; }
 

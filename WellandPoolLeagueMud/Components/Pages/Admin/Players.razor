@@ -23,17 +23,17 @@
                         else
                         {
                             <MudItem xs="12">
-                                <MudSelect T="int?"
+                                <MudSelect T="int"
                                            Label="Select a Player to Edit"
                                            Value="player.PlayerId"
                                            ValueChanged="LoadPlayer"
                                            Variant="Variant.Filled">
-                                    <MudSelectItem T="int?" Value="null">Create New Player</MudSelectItem>
+                                    <MudSelectItem T="int" Value="0">Create New Player</MudSelectItem>
                                     @if (allPlayers is not null)
                                     {
                                         @foreach (var p in allPlayers)
                                         {
-                                            <MudSelectItem T="int?" Value="p.PlayerId">@p.FirstName @p.LastName</MudSelectItem>
+                                            <MudSelectItem T="int" Value="p.PlayerId">@p.FirstName @p.LastName</MudSelectItem>
                                         }
                                     }
                                 </MudSelect>
@@ -42,7 +42,7 @@
                             <MudItem xs="12" sm="6">
                                 <MudTextField T="string"
                                               Label="First Name"
-                                              Value="player.FirstName"
+                                              @bind-Value="player.FirstName"
                                               Required
                                               Variant="Variant.Filled" />
                             </MudItem>
@@ -50,25 +50,33 @@
                             <MudItem xs="12" sm="6">
                                 <MudTextField T="string"
                                               Label="Last Name"
-                                              Value="player.LastName"
+                                              @bind-Value="player.LastName"
                                               Required
                                               Variant="Variant.Filled" />
                             </MudItem>
 
                             <MudItem xs="12">
-                                <MudSelect T="int?"
+                                <MudSelect T="int"
                                            Label="Team"
-                                           Value="player.TeamId"
+                                           @bind-Value="player.TeamId"
                                            Variant="Variant.Filled">
-                                    <MudSelectItem T="int?" Value="null">Select a Team</MudSelectItem>
+                                    <MudSelectItem T="int" >Select a Team</MudSelectItem>
                                     @if (allTeams is not null)
                                     {
                                         @foreach (var t in allTeams)
                                         {
-                                            <MudSelectItem T="int?" Value="t.TeamId">@t.TeamName</MudSelectItem>
+                                            <MudSelectItem T="int" Value="t.TeamId">@t.TeamName</MudSelectItem>
                                         }
                                     }
                                 </MudSelect>
+                            </MudItem>
+
+                            <MudItem xs="12">
+                                <MudCheckBox T="bool"
+                                             Label="Is Captain"
+                                             Value="player.IsCaptain"
+                                             ValueChanged="@(v => player.IsCaptain = v)"
+                                             Color="Color.Primary" />
                             </MudItem>
 
                             <MudItem xs="12" Class="d-flex justify-start gap-4 mt-4">
@@ -102,9 +110,9 @@
         isLoading = false;
     }
 
-    private void LoadPlayer(int? playerId)
+    private void LoadPlayer(int playerId)
     {
-        if (playerId.HasValue && allPlayers is not null)
+        if (playerId > 0 && allPlayers is not null)
         {
             player = allPlayers.FirstOrDefault(p => p.PlayerId == playerId) ?? new WPL_Player();
         }

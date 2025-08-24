@@ -1,5 +1,5 @@
 ﻿@page "/admin/weeks"
-@attribute [Authorize(Roles = "Admin")]
+@attribute [Authorize(Roles = "League_Admin, Super_User")]
 @using WellandPoolLeagueMud.Data.Services
 @using WellandPoolLeagueMud.Data.Models
 @using MudBlazor
@@ -25,56 +25,75 @@
                         else
                         {
                             <MudItem xs="12">
-                                <MudNumericField T="int?"
-                                                 Label="Week #"
-                                                 Value="schedule.WeekNumber"
-                                                 Min="0"
-                                                 Variant="Variant.Filled" />
-                            </MudItem>
-
-                            <MudItem xs="12" sm="6">
-                                <MudSelect T="int?"
-                                           Label="Home Team"
-                                           Value="schedule.HomeTeamId"
+                                <MudSelect T="int"
+                                           Label="Select Existing Schedule"
+                                           Value="selectedScheduleId"
+                                           ValueChanged="OnScheduleSelected"
                                            Variant="Variant.Filled">
-                                    <MudSelectItem T="int?" Value="null">Select a Home Team</MudSelectItem>
-                                    @if (allTeams is not null)
+                                    <MudSelectItem T="int" Value="0">Add a New Week</MudSelectItem>
+                                    @if (allSchedules is not null)
                                     {
-                                        @foreach (var t1 in allTeams)
+                                        @foreach (var s in allSchedules)
                                         {
-                                            <MudSelectItem T="int?" Value="t1.TeamId">@t1.TeamName</MudSelectItem>
+                                            <MudSelectItem T="int" Value="s.ScheduleId">
+                                                Week @s.WeekNumber | @s.HomeTeam?.TeamName vs @s.AwayTeam?.TeamName
+                                            </MudSelectItem>
                                         }
                                     }
                                 </MudSelect>
                             </MudItem>
 
                             <MudItem xs="12" sm="6">
-                                <MudSelect T="int?"
-                                           Label="Away Team"
-                                           Value="schedule.AwayTeamId"
+                                <MudNumericField T="int"
+                                                 Label="Week #"
+                                                 @bind-Value="schedule.WeekNumber"
+                                                 Min="0"
+                                                 Variant="Variant.Filled" />
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudSelect T="int"
+                                           Label="Home Team"
+                                           @bind-Value="schedule.HomeTeamId"
                                            Variant="Variant.Filled">
-                                    <MudSelectItem T="int?" Value="null">Select an Away Team</MudSelectItem>
+                                    <MudSelectItem T="int" Value="0">Select a Home Team</MudSelectItem>
+                                    @if (allTeams is not null)
+                                    {
+                                        @foreach (var t1 in allTeams)
+                                        {
+                                            <MudSelectItem T="int" Value="t1.TeamId">@t1.TeamName</MudSelectItem>
+                                        }
+                                    }
+                                </MudSelect>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudSelect T="int"
+                                           Label="Away Team"
+                                           @bind-Value="schedule.AwayTeamId"
+                                           Variant="Variant.Filled">
+                                    <MudSelectItem T="int" Value="0">Select an Away Team</MudSelectItem>
                                     @if (allTeams is not null)
                                     {
                                         @foreach (var t2 in allTeams)
                                         {
-                                            <MudSelectItem T="int?" Value="t2.TeamId">@t2.TeamName</MudSelectItem>
+                                            <MudSelectItem T="int" Value="t2.TeamId">@t2.TeamName</MudSelectItem>
                                         }
                                     }
                                 </MudSelect>
                             </MudItem>
 
                             <MudItem xs="12">
-                                <MudSelect T="int?"
+                                <MudSelect T="int"
                                            Label="Winning Team"
-                                           Value="schedule.WinningTeamId"
+                                           @bind-Value="schedule.WinningTeamId"
                                            Variant="Variant.Filled">
-                                    <MudSelectItem T="int?" Value="null">Select a Winning Team</MudSelectItem>
+                                    <MudSelectItem T="int" Value="0">Select a Winning Team</MudSelectItem>
                                     @if (allTeams is not null)
                                     {
                                         @foreach (var t3 in allTeams)
                                         {
-                                            <MudSelectItem T="int?" Value="t3.TeamId">@t3.TeamName</MudSelectItem>
+                                            <MudSelectItem T="int" Value="t3.TeamId">@t3.TeamName</MudSelectItem>
                                         }
                                     }
                                 </MudSelect>
@@ -83,14 +102,14 @@
                             <MudItem xs="12" sm="6">
                                 <MudCheckBox T="bool"
                                              Label="Forfeit"
-                                             Value="schedule.Forfeit"
+                                             @bind-Checked="schedule.Forfeit"
                                              Color="Color.Primary" />
                             </MudItem>
 
                             <MudItem xs="12" sm="6">
                                 <MudCheckBox T="bool"
                                              Label="Playoff"
-                                             Value="schedule.Playoffs"
+                                             @bind-Checked="schedule.Playoffs"
                                              Color="Color.Primary" />
                             </MudItem>
 
@@ -109,7 +128,9 @@
 @code {
     private WPL_Schedule schedule = new();
     private List<WPL_Team>? allTeams;
+    private List<WPL_Schedule>? allSchedules;
     private bool isLoading = true;
+    private int selectedScheduleId;
 
     protected override async Task OnInitializedAsync()
     {
@@ -122,6 +143,7 @@
         {
             isLoading = true;
             allTeams = await DataFactory.GetTeamsAsync();
+            allSchedules = await DataFactory.GetSchedulesAsync();
         }
         finally
         {
@@ -132,6 +154,19 @@
     private void ResetForm()
     {
         schedule = new WPL_Schedule();
+        selectedScheduleId = 0;
+    }
+
+    private void OnScheduleSelected(int scheduleId)
+    {
+        if (scheduleId > 0 && allSchedules != null)
+        {
+            schedule = allSchedules.FirstOrDefault(s => s.ScheduleId == scheduleId) ?? new WPL_Schedule();
+        }
+        else
+        {
+            ResetForm();
+        }
     }
 
     private async Task SaveWeekAsync()

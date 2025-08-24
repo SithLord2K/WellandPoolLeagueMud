@@ -28,7 +28,7 @@
                                            Value="team.TeamId"
                                            ValueChanged="LoadTeamAsync"
                                            Variant="Variant.Filled">
-                                    <MudSelectItem T="int?" Value="null">Create New Team</MudSelectItem>
+                                    <MudSelectItem T="int?" Value="0">Create New Team</MudSelectItem>
                                     @if (allTeams is not null)
                                     {
                                         @foreach (var t in allTeams)
@@ -52,7 +52,7 @@
                                            Label="Team Captain"
                                            @bind-Value="team.CaptainPlayerId"
                                            Variant="Variant.Filled">
-                                    <MudSelectItem T="int?" Value="null">Select a Captain</MudSelectItem>
+                                    <MudSelectItem T="int?" Value="0">Select a Captain</MudSelectItem>
                                     @if (allPlayers is not null)
                                     {
                                         @foreach (var p in allPlayers)

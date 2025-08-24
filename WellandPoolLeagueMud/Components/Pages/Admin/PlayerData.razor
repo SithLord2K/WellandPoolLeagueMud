@@ -23,23 +23,23 @@
                         else
                         {
                             <MudItem xs="12">
-                                <MudSelect T="int?"
+                                <MudSelect T="int"
                                            Label="Choose Player to Add Games To"
                                            Value="selectedPlayerId"
                                            ValueChanged="LoadPlayerDataAsync"
                                            Variant="Variant.Filled">
-                                    <MudSelectItem T="int?" Value="null">Choose Player To Add Games To</MudSelectItem>
+                                    <MudSelectItem T="int">Choose Player To Add Games To</MudSelectItem>
                                     @if (allPlayers is not null)
                                     {
                                         @foreach (var player in allPlayers)
                                         {
-                                            <MudSelectItem T="int?" Value="player.PlayerId">@player.FirstName @player.LastName</MudSelectItem>
+                                            <MudSelectItem T="int" Value="player.PlayerId">@player.FirstName @player.LastName</MudSelectItem>
                                         }
                                     }
                                 </MudSelect>
                             </MudItem>
 
-                            @if (selectedPlayerId.HasValue && selectedPlayerId > 0)
+                            @if (selectedPlayerId != 0 && selectedPlayerId > 0)
                             {
                                 <MudItem xs="12">
                                     <MudTextField T="string"
@@ -84,7 +84,7 @@
                                 <MudButton Variant="Variant.Filled"
                                            Color="Color.Success"
                                            OnClick="AddOrUpdatePlayerGameAsync"
-                                           Disabled="!selectedPlayerId.HasValue || playerGame.WeekNumber == 0">
+                                           Disabled="selectedPlayerId == 0 || playerGame.WeekNumber == 0">
                                     Save Player Games
                                 </MudButton>
                                 <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="ResetForm">Reset</MudButton>
@@ -99,7 +99,7 @@
 
 @code {
     private WPL_PlayerGame playerGame = new();
-    private int? selectedPlayerId;
+    private int selectedPlayerId;
     private List<WPL_Player>? allPlayers;
     private List<WPL_PlayerGame>? allPlayerGames;
     private bool isLoading = true;
@@ -140,12 +140,12 @@
         return string.Empty;
     }
 
-    private async Task LoadPlayerDataAsync(int? playerId)
+    private async Task LoadPlayerDataAsync(int playerId)
     {
         selectedPlayerId = playerId;
-        if (selectedPlayerId.HasValue)
+        if (selectedPlayerId > 0)
         {
-            playerGame.PlayerId = selectedPlayerId.Value;
+            playerGame.PlayerId = selectedPlayerId;
             await CheckExistingGameAsync(playerGame.WeekNumber);
         }
         else
@@ -156,7 +156,7 @@
 
     private async Task CheckExistingGameAsync(int weekNumber)
     {
-        if (allPlayerGames is not null && selectedPlayerId.HasValue)
+        if (allPlayerGames is not null && selectedPlayerId > 0)
         {
             var existingRecord = allPlayerGames.FirstOrDefault(x => x.WeekNumber == weekNumber && x.PlayerId == selectedPlayerId);
             if (existingRecord is not null)
@@ -177,7 +177,7 @@
 
     private async Task AddOrUpdatePlayerGameAsync()
     {
-        if (selectedPlayerId.HasValue)
+        if (selectedPlayerId > 0)
         {
             var isNewGame = playerGame.PlayerGameId == 0;
             var success = await DataFactory.SavePlayerGameAsync(playerGame);
@@ -198,7 +198,7 @@
     private void ResetForm()
     {
         playerGame = new WPL_PlayerGame();
-        selectedPlayerId = null;
+        selectedPlayerId = 0;
         SetInitialWeekNumber();
     }
 }
