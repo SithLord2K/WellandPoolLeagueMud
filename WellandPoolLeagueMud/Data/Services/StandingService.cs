@@ -59,12 +59,10 @@ namespace WellandPoolLeagueMud.Data.Services
                         WeeksLost = weeksLost,
                         TotalFramesWon = totalFramesWon,
                         TotalFramesLost = totalFramesLost,
-                        Points = points,
                         Rank = 0 // Will be calculated later
                     };
                 })
-                .OrderByDescending(t => t.Points)
-                .ThenByDescending(t => t.TotalFramesWon)
+                .OrderByDescending(t => t.TotalFramesWon)
                 .ToList();
 
             // Assign ranks and divisions

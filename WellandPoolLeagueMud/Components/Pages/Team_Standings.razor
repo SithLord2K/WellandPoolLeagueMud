@@ -14,7 +14,7 @@
     {
         <MudText Typo="Typo.h6" Class="my-4">@divisionGroup.Key</MudText>
         <MudDataGrid TItem="TeamStandingViewModel"
-                     Items="@divisionGroup.OrderByDescending(x => x.Points).ThenByDescending(x => x.TotalFramesWon).ToList()"
+                     Items="@divisionGroup.OrderByDescending(x => x.TotalFramesWon).ToList()"
                      Hover="true"
                      Striped="true"
                      Dense="false"
@@ -30,7 +30,6 @@
                 <PropertyColumn Property="x => x.WeeksLost" Title="Weeks Lost" />
                 <PropertyColumn Property="x => x.TotalFramesWon" Title="Games Won" />
                 <PropertyColumn Property="x => x.TotalFramesLost" Title="Games Lost" />
-                <PropertyColumn Property="x => x.Points" Title="Points" />
             </Columns>
             <PagerContent>
                 <MudDataGridPager T="TeamStandingViewModel" />

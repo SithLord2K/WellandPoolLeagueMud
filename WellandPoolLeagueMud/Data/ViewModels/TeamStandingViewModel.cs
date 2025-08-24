@@ -10,7 +10,6 @@ namespace WellandPoolLeagueMud.Data.ViewModels
         public int WeeksLost { get; set; }
         public int TotalFramesWon { get; set; }
         public int TotalFramesLost { get; set; }
-        public decimal Points { get; set; }
         public string Division { get; set; } = string.Empty;
         public int Rank { get; set; }
     }

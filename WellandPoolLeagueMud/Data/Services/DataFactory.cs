@@ -172,5 +172,6 @@ namespace WellandPoolLeagueMud.Data.Services
             context.WeeklyWinners.Remove(weeklyWinner);
             return await context.SaveChangesAsync() > 0;
         }
+
     }
 }

@@ -24,7 +24,7 @@ namespace WellandPoolLeagueMud.Data.Models
         [ForeignKey("AwayTeamId")]
         public virtual WPL_Team? AwayTeam { get; set; }
 
-        public int WinningTeamId { get; set; }
+        public int? WinningTeamId { get; set; }
 
         public bool Forfeit { get; set; }
 
