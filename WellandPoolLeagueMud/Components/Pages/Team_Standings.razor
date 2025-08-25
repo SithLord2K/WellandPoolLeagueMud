@@ -10,12 +10,11 @@
 
 @if (teamStandings is not null)
 {
-    <MudDataGrid TItem="TeamStandingViewModel"
+    <MudDataGrid T="TeamStandingViewModel"
                  Items="@teamStandings"
                  Hover="true"
                  Striped="true"
                  Dense="false"
-                 Sortable="true"
                  Filterable="true"
                  Bordered="true"
                  Class="pb-2">

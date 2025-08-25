@@ -17,12 +17,14 @@ namespace WellandPoolLeagueMud.Data.Services
         {
             return await _context.Players
                 .Include(p => p.PlayerGames)
+                .Include(p => p.Team)
                 .Select(p => new PlayerViewModel
                 {
                     PlayerId = p.PlayerId,
                     FirstName = p.FirstName,
                     LastName = p.LastName,
-                    Phone = p.Phone,
+                    TeamId = p.TeamId,
+                    TeamName = p.Team != null ? p.Team.TeamName : null,
                     GamesPlayed = p.PlayerGames.Count,
                     GamesWon = p.PlayerGames.Count(pg => pg.IsWin),
                     GamesLost = p.PlayerGames.Count(pg => !pg.IsWin)
@@ -36,6 +38,7 @@ namespace WellandPoolLeagueMud.Data.Services
         {
             var player = await _context.Players
                 .Include(p => p.PlayerGames)
+                .Include(p => p.Team)
                 .FirstOrDefaultAsync(p => p.PlayerId == id);
 
             if (player == null) return null;
@@ -45,7 +48,8 @@ namespace WellandPoolLeagueMud.Data.Services
                 PlayerId = player.PlayerId,
                 FirstName = player.FirstName,
                 LastName = player.LastName,
-                Phone = player.Phone,
+                TeamId = player.TeamId,
+                TeamName = player.Team?.TeamName,
                 GamesPlayed = player.PlayerGames.Count,
                 GamesWon = player.PlayerGames.Count(pg => pg.IsWin),
                 GamesLost = player.PlayerGames.Count(pg => !pg.IsWin)
@@ -58,7 +62,7 @@ namespace WellandPoolLeagueMud.Data.Services
             {
                 FirstName = playerVM.FirstName,
                 LastName = playerVM.LastName,
-                Phone = playerVM.Phone
+                TeamId = playerVM.TeamId
             };
 
             _context.Players.Add(player);
@@ -75,7 +79,7 @@ namespace WellandPoolLeagueMud.Data.Services
 
             player.FirstName = playerVM.FirstName;
             player.LastName = playerVM.LastName;
-            player.Phone = playerVM.Phone;
+            player.TeamId = playerVM.TeamId;
 
             await _context.SaveChangesAsync();
             return playerVM;
@@ -95,12 +99,12 @@ namespace WellandPoolLeagueMud.Data.Services
         {
             var standings = await _context.Players
                 .Include(p => p.PlayerGames)
-                .ThenInclude(pg => pg.Team)
+                .Include(p => p.Team)
                 .Select(p => new PlayerStandingViewModel
                 {
                     PlayerId = p.PlayerId,
                     PlayerName = string.IsNullOrEmpty(p.LastName) ? p.FirstName : $"{p.FirstName} {p.LastName}",
-                    TeamName = p.PlayerGames.OrderByDescending(pg => pg.GameDate).FirstOrDefault().Team.TeamName,
+                    TeamName = p.Team != null ? p.Team.TeamName : null,
                     GamesPlayed = p.PlayerGames.Count,
                     Wins = p.PlayerGames.Count(pg => pg.IsWin),
                     Losses = p.PlayerGames.Count(pg => !pg.IsWin),
@@ -122,6 +126,28 @@ namespace WellandPoolLeagueMud.Data.Services
         public async Task<bool> PlayerExistsAsync(int id)
         {
             return await _context.Players.AnyAsync(p => p.PlayerId == id);
+        }
+
+        public async Task<List<PlayerViewModel>> GetPlayersByTeamAsync(int teamId)
+        {
+            return await _context.Players
+                .Include(p => p.PlayerGames)
+                .Include(p => p.Team)
+                .Where(p => p.TeamId == teamId)
+                .Select(p => new PlayerViewModel
+                {
+                    PlayerId = p.PlayerId,
+                    FirstName = p.FirstName,
+                    LastName = p.LastName,
+                    TeamId = p.TeamId,
+                    TeamName = p.Team!.TeamName,
+                    GamesPlayed = p.PlayerGames.Count,
+                    GamesWon = p.PlayerGames.Count(pg => pg.IsWin),
+                    GamesLost = p.PlayerGames.Count(pg => !pg.IsWin)
+                })
+                .OrderBy(p => p.FirstName)
+                .ThenBy(p => p.LastName)
+                .ToListAsync();
         }
     }
 }

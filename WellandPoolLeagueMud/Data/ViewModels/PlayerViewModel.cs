@@ -13,9 +13,8 @@ namespace WellandPoolLeagueMud.Data.ViewModels
         [StringLength(100, ErrorMessage = "Last Name cannot exceed 100 characters")]
         public string? LastName { get; set; }
 
-        [StringLength(15, ErrorMessage = "Phone cannot exceed 15 characters")]
-        [Phone(ErrorMessage = "Invalid phone number format")]
-        public string? Phone { get; set; }
+        public int? TeamId { get; set; }
+        public string? TeamName { get; set; }
 
         public string FullName => string.IsNullOrEmpty(LastName) ? FirstName : $"{FirstName} {LastName}";
         public int GamesPlayed { get; set; }

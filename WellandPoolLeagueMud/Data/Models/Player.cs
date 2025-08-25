@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace WellandPoolLeagueMud.Data.Models
 {
@@ -13,8 +14,10 @@ namespace WellandPoolLeagueMud.Data.Models
         [StringLength(100)]
         public string? LastName { get; set; }
 
-        [StringLength(15)]
-        public string? Phone { get; set; }
+        public int? TeamId { get; set; }
+
+        [ForeignKey("TeamId")]
+        public virtual Team? Team { get; set; }
 
         public virtual ICollection<PlayerGame> PlayerGames { get; set; } = new List<PlayerGame>();
         public virtual ICollection<Team> CaptainedTeams { get; set; } = new List<Team>();

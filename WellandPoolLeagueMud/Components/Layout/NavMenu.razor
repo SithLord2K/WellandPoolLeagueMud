@@ -11,6 +11,7 @@
         <MudNavLink Href="playoff_schedule" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.DateRange">Playoffs</MudNavLink>
     </MudNavGroup>
     <AuthorizeView Roles="League_Admin, Super_User">
+        <MudDivider />
         <MudNavGroup Title="Admin" Icon="@Icons.Material.Filled.AdminPanelSettings">
             <MudNavLink Href="admin/teams" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Group">Teams</MudNavLink>
             <MudNavLink Href="admin/players" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Person">Players</MudNavLink>
@@ -18,6 +19,8 @@
             <MudNavLink Href="admin/schedules" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Schedule">Schedules</MudNavLink>
         </MudNavGroup>
     </AuthorizeView>
+    <MudDivider />
+    <MudNavLink Href="/Downloads/Poolscoresheet.xls" Icon="@Icons.Material.Filled.Download">Download Scoresheet</MudNavLink>
 </MudNavMenu>
 
 

@@ -137,7 +137,7 @@ namespace WellandPoolLeagueMud.Data.Services
                     PlayerId = p.PlayerId,
                     FirstName = p.FirstName,
                     LastName = p.LastName,
-                    Phone = p.Phone,
+                    TeamId = p.TeamId,
                     GamesPlayed = p.PlayerGames.Count(pg => pg.TeamId == teamId),
                     GamesWon = p.PlayerGames.Count(pg => pg.TeamId == teamId && pg.IsWin),
                     GamesLost = p.PlayerGames.Count(pg => pg.TeamId == teamId && !pg.IsWin)

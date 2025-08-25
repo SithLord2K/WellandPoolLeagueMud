@@ -39,11 +39,12 @@ namespace WellandPoolLeagueMud.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<string>("Phone")
-                        .HasMaxLength(15)
-                        .HasColumnType("nvarchar(15)");
+                    b.Property<int?>("TeamId")
+                        .HasColumnType("int");
 
                     b.HasKey("PlayerId");
+
+                    b.HasIndex("TeamId");
 
                     b.HasIndex("FirstName", "LastName");
 
@@ -153,6 +154,16 @@ namespace WellandPoolLeagueMud.Migrations
                         .IsUnique();
 
                     b.ToTable("WPLMud_Teams", (string)null);
+                });
+
+            modelBuilder.Entity("WellandPoolLeagueMud.Data.Models.Player", b =>
+                {
+                    b.HasOne("WellandPoolLeagueMud.Data.Models.Team", "Team")
+                        .WithMany()
+                        .HasForeignKey("TeamId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Team");
                 });
 
             modelBuilder.Entity("WellandPoolLeagueMud.Data.Models.PlayerGame", b =>

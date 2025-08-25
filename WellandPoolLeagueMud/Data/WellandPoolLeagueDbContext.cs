@@ -25,6 +25,12 @@ namespace WellandPoolLeagueMud.Data
             modelBuilder.Entity<Schedule>().ToTable("WPLMud_Schedules");
 
             // Configure relationships
+            modelBuilder.Entity<Player>()
+                .HasOne(p => p.Team)
+                .WithMany()
+                .HasForeignKey(p => p.TeamId)
+                .OnDelete(DeleteBehavior.SetNull);
+
             modelBuilder.Entity<Team>()
                 .HasOne(t => t.Captain)
                 .WithMany(p => p.CaptainedTeams)
