@@ -15,7 +15,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddScoped<IPlayerService, PlayerService>();
 builder.Services.AddScoped<ITeamService, TeamService>();
 builder.Services.AddScoped<IPlayerGameService, PlayerGameService>();
-
+builder.Services.AddScoped<IScheduleService, ScheduleService>();
 
 
 builder.Services.AddDbContextFactory<WellandPoolLeagueDbContext>(options =>

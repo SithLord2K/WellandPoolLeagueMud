@@ -1,39 +1,43 @@
-﻿@* @page "/admin/players"
+﻿@page "/admin/players"
 @using WellandPoolLeagueMud.Data.Services
-@using WellandPoolLeagueMud.Data.Models
+@using WellandPoolLeagueMud.Data.ViewModels
 @using MudBlazor
 @inject ISnackbar Snackbar
-@inject IDataFactory dataFactory
+@inject IPlayerService PlayerService
+@inject ITeamService TeamService
 
 <PageTitle>Players Administration</PageTitle>
 
 <MudContainer>
     <MudGrid Justify="Justify.Center" Spacing="4">
         <MudItem xs="12" sm="8" md="6">
-            <MudPaper Class="pa-4">
+            <MudPaper Class="pa-4" Elevation="3">
                 <MudText Typo="Typo.h5" Class="mb-4">Add/Edit Player</MudText>
-                <MudForm>
-                    <MudGrid>
-                        @if (isLoading)
-                        {
-                            <MudItem xs="12" Class="d-flex justify-center py-8">
-                                <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
-                            </MudItem>
-                        }
-                        else
-                        {
+
+                @if (isLoading)
+                {
+                    <div class="d-flex justify-center py-8">
+                        <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+                    </div>
+                }
+                else
+                {
+                    <MudForm @ref="form" Model="@player" Validation="@(new Func<object, IEnumerable<string>>(ValidatePlayer))">
+                        <MudGrid>
                             <MudItem xs="12">
                                 <MudSelect T="int"
                                            Label="Select a Player to Edit"
-                                           Value="player.PlayerId"
+                                           Value="selectedPlayerId"
                                            ValueChanged="LoadPlayer"
-                                           Variant="Variant.Filled">
+                                           Variant="Variant.Filled"
+                                           AdornmentIcon="@Icons.Material.Filled.Person"
+                                           Adornment="Adornment.Start">
                                     <MudSelectItem T="int" Value="0">Create New Player</MudSelectItem>
                                     @if (allPlayers is not null)
                                     {
-                                        @foreach (var p in allPlayers)
+                                        @foreach (var p in allPlayers.OrderBy(x => x.FirstName).ThenBy(x => x.LastName))
                                         {
-                                            <MudSelectItem T="int" Value="p.PlayerId">@p.FirstName @p.LastName</MudSelectItem>
+                                            <MudSelectItem T="int" Value="p.PlayerId">@p.FullName</MudSelectItem>
                                         }
                                     }
                                 </MudSelect>
@@ -44,58 +48,156 @@
                                               Label="First Name"
                                               @bind-Value="player.FirstName"
                                               Required
-                                              Variant="Variant.Filled" />
+                                              RequiredError="First name is required"
+                                              Variant="Variant.Filled"
+                                              AdornmentIcon="@Icons.Material.Filled.Person"
+                                              Adornment="Adornment.Start" />
                             </MudItem>
 
                             <MudItem xs="12" sm="6">
                                 <MudTextField T="string"
                                               Label="Last Name"
                                               @bind-Value="player.LastName"
-                                              Required
-                                              Variant="Variant.Filled" />
+                                              Variant="Variant.Filled"
+                                              AdornmentIcon="@Icons.Material.Filled.Person"
+                                              Adornment="Adornment.Start" />
                             </MudItem>
 
                             <MudItem xs="12">
-                                <MudSelect T="int"
-                                           Label="Team"
-                                           @bind-Value="player.TeamId"
-                                           Variant="Variant.Filled">
-                                    <MudSelectItem T="int" >Select a Team</MudSelectItem>
-                                    @if (allTeams is not null)
-                                    {
-                                        @foreach (var t in allTeams)
-                                        {
-                                            <MudSelectItem T="int" Value="t.TeamId">@t.TeamName</MudSelectItem>
-                                        }
-                                    }
-                                </MudSelect>
-                            </MudItem>
-
-                            <MudItem xs="12">
-                                <MudCheckBox T="bool"
-                                             Label="Is Captain"
-                                             Value="player.IsCaptain"
-                                             ValueChanged="@(v => player.IsCaptain = v)"
-                                             Color="Color.Primary" />
+                                <MudTextField T="string"
+                                              Label="Phone Number"
+                                              @bind-Value="player.Phone"
+                                              Variant="Variant.Filled"
+                                              AdornmentIcon="@Icons.Material.Filled.Phone"
+                                              Adornment="Adornment.Start"
+                                              HelperText="Optional phone number" />
                             </MudItem>
 
                             <MudItem xs="12" Class="d-flex justify-start gap-4 mt-4">
-                                <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="AddOrUpdatePlayerAsync">Save Player</MudButton>
-                                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ResetForm">Reset</MudButton>
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Success"
+                                           StartIcon="@Icons.Material.Filled.Save"
+                                           OnClick="AddOrUpdatePlayerAsync"
+                                           Disabled="isProcessing">
+                                    @if (isProcessing)
+                                    {
+                                        <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                                        <span class="ml-2">Saving...</span>
+                                    }
+                                    else
+                                    {
+                                        <span>@(selectedPlayerId == 0 ? "Add Player" : "Update Player")</span>
+                                    }
+                                </MudButton>
+
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Primary"
+                                           StartIcon="@Icons.Material.Filled.Refresh"
+                                           OnClick="ResetForm"
+                                           Disabled="isProcessing">
+                                    Reset
+                                </MudButton>
+
+                                @if (selectedPlayerId > 0)
+                                {
+                                    <MudButton Variant="Variant.Filled"
+                                               Color="Color.Error"
+                                               StartIcon="@Icons.Material.Filled.Delete"
+                                               OnClick="DeletePlayerAsync"
+                                               Disabled="isProcessing">
+                                        Delete
+                                    </MudButton>
+                                }
                             </MudItem>
-                        }
-                    </MudGrid>
-                </MudForm>
+                        </MudGrid>
+                    </MudForm>
+                }
             </MudPaper>
         </MudItem>
+
+        @if (allPlayers is not null && allPlayers.Any())
+        {
+            <MudItem xs="12">
+                <MudPaper Class="pa-4" Elevation="3">
+                    <MudText Typo="Typo.h6" Class="mb-4">Current Players (@allPlayers.Count)</MudText>
+                    <MudTable Items="@allPlayers.OrderBy(p => p.FirstName).ThenBy(p => p.LastName)"
+                              Hover="true"
+                              Striped="true"
+                              Dense="true"
+                              T="PlayerViewModel">
+                        <HeaderContent>
+                            <MudTh>Name</MudTh>
+                            <MudTh>Phone</MudTh>
+                            <MudTh Style="text-align:center;">Games Played</MudTh>
+                            <MudTh Style="text-align:center;">Games Won</MudTh>
+                            <MudTh Style="text-align:center;">Win %</MudTh>
+                            <MudTh Style="text-align:center;">Actions</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Name">
+                                <div class="d-flex align-center">
+                                    <MudAvatar Color="Color.Primary" Size="Size.Small" Class="mr-2">
+                                        @GetPlayerInitials(context.FullName)
+                                    </MudAvatar>
+                                    <MudText>@context.FullName</MudText>
+                                </div>
+                            </MudTd>
+                            <MudTd DataLabel="Phone">
+                                @if (!string.IsNullOrEmpty(context.Phone))
+                                {
+                                    <MudText>@context.Phone</MudText>
+                                }
+                                else
+                                {
+                                    <MudText Class="mud-text-secondary">-</MudText>
+                                }
+                            </MudTd>
+                            <MudTd DataLabel="Games Played" Style="text-align:center;">
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@context.GamesPlayed</MudChip>
+                            </MudTd>
+                            <MudTd DataLabel="Games Won" Style="text-align:center;">
+                                <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Text">@context.GamesWon</MudChip>
+                            </MudTd>
+                            <MudTd DataLabel="Win %" Style="text-align:center;">
+                                @if (context.GamesPlayed > 0)
+                                {
+                                    <MudChip T="string" Color="@GetWinPercentageColor(context.WinPercentage)" Size="Size.Small">
+                                        @context.WinPercentage.ToString("F1")%
+                                    </MudChip>
+                                }
+                                else
+                                {
+                                    <MudText Class="mud-text-secondary">-</MudText>
+                                }
+                            </MudTd>
+                            <MudTd DataLabel="Actions" Style="text-align:center;">
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                               Color="Color.Primary"
+                                               Size="Size.Small"
+                                               OnClick="@(() => LoadPlayer(context.PlayerId))"
+                                               Title="Edit Player" />
+                            </MudTd>
+                        </RowTemplate>
+                        <NoRecordsContent>
+                            <div class="d-flex flex-column align-center pa-4">
+                                <MudIcon Icon="@Icons.Material.Filled.PersonOff" Style="font-size: 2rem; color: var(--mud-palette-text-secondary);" />
+                                <MudText Typo="Typo.body2" Class="mud-text-secondary mt-2">No players found</MudText>
+                            </div>
+                        </NoRecordsContent>
+                    </MudTable>
+                </MudPaper>
+            </MudItem>
+        }
     </MudGrid>
 </MudContainer>
 
 @code {
-    private WPL_Player player = new();
-    private List<WPL_Team>? allTeams;
-    private List<WPL_Player>? allPlayers;
+    private MudForm form = new();
+    private PlayerViewModel player = new();
+    private List<PlayerViewModel>? allPlayers;
+    private int selectedPlayerId = 0;
     private bool isLoading = true;
+    private bool isProcessing = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -105,16 +207,36 @@
     private async Task LoadDataAsync()
     {
         isLoading = true;
-        allPlayers = await dataFactory.GetPlayersAsync();
-        allTeams = await dataFactory.GetTeamsAsync();
-        isLoading = false;
+        try
+        {
+            allPlayers = await PlayerService.GetAllPlayersAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading players: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
     }
 
-    private void LoadPlayer(int playerId)
+    private async Task LoadPlayer(int playerId)
     {
-        if (playerId > 0 && allPlayers is not null)
+        selectedPlayerId = playerId;
+
+        if (playerId > 0)
         {
-            player = allPlayers.FirstOrDefault(p => p.PlayerId == playerId) ?? new WPL_Player();
+            var loadedPlayer = await PlayerService.GetPlayerByIdAsync(playerId);
+            if (loadedPlayer != null)
+            {
+                player = loadedPlayer;
+            }
+            else
+            {
+                Snackbar.Add("Player not found", Severity.Warning);
+                ResetForm();
+            }
         }
         else
         {
@@ -124,31 +246,127 @@
 
     private async Task AddOrUpdatePlayerAsync()
     {
-        bool isNewPlayer = player.PlayerId == 0;
-
-        var success = await dataFactory.SavePlayerAsync(player);
-
-        if (success)
+        if (form != null)
         {
+            await form.Validate();
+            if (!form.IsValid) return;
+        }
+
+        isProcessing = true;
+        try
+        {
+            bool isNewPlayer = selectedPlayerId == 0;
+            PlayerViewModel? result;
+
             if (isNewPlayer)
             {
+                result = await PlayerService.CreatePlayerAsync(player);
                 Snackbar.Add("Player added successfully!", Severity.Success);
             }
             else
             {
-                Snackbar.Add("Player updated successfully!", Severity.Success);
+                player.PlayerId = selectedPlayerId;
+                result = await PlayerService.UpdatePlayerAsync(player);
+                if (result != null)
+                {
+                    Snackbar.Add("Player updated successfully!", Severity.Success);
+                }
+                else
+                {
+                    Snackbar.Add("Player not found or update failed", Severity.Error);
+                    return;
+                }
             }
+
             await LoadDataAsync();
             ResetForm();
         }
-        else
+        catch (Exception ex)
         {
-            Snackbar.Add("Failed to save player. Please try again.", Severity.Error);
+            Snackbar.Add($"Error saving player: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private async Task DeletePlayerAsync()
+    {
+        if (selectedPlayerId == 0) return;
+
+        isProcessing = true;
+        try
+        {
+            var success = await PlayerService.DeletePlayerAsync(selectedPlayerId);
+            if (success)
+            {
+                Snackbar.Add("Player deleted successfully!", Severity.Success);
+                await LoadDataAsync();
+                ResetForm();
+            }
+            else
+            {
+                Snackbar.Add("Failed to delete player", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error deleting player: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isProcessing = false;
         }
     }
 
     private void ResetForm()
     {
-        player = new WPL_Player();
+        player = new PlayerViewModel();
+        selectedPlayerId = 0;
     }
-} *@
+
+    private IEnumerable<string> ValidatePlayer(object model)
+    {
+        var player = model as PlayerViewModel;
+        if (player == null) yield break;
+
+        if (string.IsNullOrWhiteSpace(player.FirstName))
+            yield return "First name is required";
+
+        if (player.FirstName?.Length > 100)
+            yield return "First name cannot exceed 100 characters";
+
+        if (player.LastName?.Length > 100)
+            yield return "Last name cannot exceed 100 characters";
+
+        if (player.Phone?.Length > 15)
+            yield return "Phone number cannot exceed 15 characters";
+    }
+
+    private string GetPlayerInitials(string fullName)
+    {
+        if (string.IsNullOrWhiteSpace(fullName))
+            return "?";
+
+        var parts = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
+        else if (parts.Length == 1)
+            return $"{parts[0][0]}".ToUpper();
+
+        return "?";
+    }
+
+    private Color GetWinPercentageColor(decimal winPercentage)
+    {
+        return winPercentage switch
+        {
+            >= 75 => Color.Success,
+            >= 60 => Color.Info,
+            >= 50 => Color.Warning,
+            >= 25 => Color.Secondary,
+            _ => Color.Error
+        };
+    }
+}

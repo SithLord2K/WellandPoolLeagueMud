@@ -1,15 +1,17 @@
-﻿@* @page "/admin/playerdata"
+﻿@page "/admin/playerdata"
 @using WellandPoolLeagueMud.Data.Services
-@using WellandPoolLeagueMud.Data.Models
+@using WellandPoolLeagueMud.Data.ViewModels
 @using MudBlazor
-@inject IDataFactory DataFactory
+@inject IPlayerGameService PlayerGameService
+@inject IPlayerService PlayerService
+@inject ITeamService TeamService
 @inject ISnackbar Snackbar
 
 <PageTitle>Add Player Games</PageTitle>
 
 <MudContainer>
     <MudGrid Justify="Justify.Center" Spacing="4">
-        <MudItem xs="12" sm="8" md="6">
+        <MudItem xs="12" sm="10" md="8">
             <MudPaper Class="pa-4">
                 <MudText Typo="Typo.h5" Class="mb-4">Add/Edit Player Games</MudText>
                 <MudForm>
@@ -28,12 +30,12 @@
                                            Value="selectedPlayerId"
                                            ValueChanged="LoadPlayerDataAsync"
                                            Variant="Variant.Filled">
-                                    <MudSelectItem T="int">Choose Player To Add Games To</MudSelectItem>
+                                    <MudSelectItem T="int" Value="0">Choose Player To Add Games To</MudSelectItem>
                                     @if (allPlayers is not null)
                                     {
                                         @foreach (var player in allPlayers)
                                         {
-                                            <MudSelectItem T="int" Value="player.PlayerId">@player.FirstName @player.LastName</MudSelectItem>
+                                            <MudSelectItem T="int" Value="player.PlayerId">@player.FullName</MudSelectItem>
                                         }
                                     }
                                 </MudSelect>
@@ -41,7 +43,7 @@
 
                             @if (selectedPlayerId != 0 && selectedPlayerId > 0)
                             {
-                                <MudItem xs="12">
+                                <MudItem xs="12" sm="6">
                                     <MudTextField T="string"
                                                   Label="Player Name"
                                                   Value="@GetPlayerName(selectedPlayerId)"
@@ -49,60 +51,131 @@
                                                   Disabled />
                                 </MudItem>
 
-                                <MudItem xs="12">
+                                <MudItem xs="12" sm="6">
+                                    <MudSelect T="int"
+                                               Label="Team"
+                                               @bind-Value="playerGame.TeamId"
+                                               Variant="Variant.Filled"
+                                               Required>
+                                        <MudSelectItem T="int" Value="0">Select Team</MudSelectItem>
+                                        @if (allTeams is not null)
+                                        {
+                                            @foreach (var team in allTeams)
+                                            {
+                                                <MudSelectItem T="int" Value="team.TeamId">@team.TeamName</MudSelectItem>
+                                            }
+                                        }
+                                    </MudSelect>
+                                </MudItem>
+
+                                <MudItem xs="12" sm="6">
                                     <MudNumericField T="int"
                                                      Label="Week Number"
                                                      Value="playerGame.WeekNumber"
                                                      Min="1"
+                                                     Max="52"
                                                      Variant="Variant.Filled"
                                                      ValueChanged="CheckExistingGameAsync" />
                                 </MudItem>
+
                                 <MudItem xs="12" sm="6">
-                                    <MudNumericField T="int"
-                                                     Label="Frames Won"
-                                                     @bind-Value="playerGame.FramesWon"
-                                                     Variant="Variant.Filled"
-                                                     Min="0" />
+                                    <MudDatePicker Label="Game Date"
+                                                   @bind-Date="gameDate"
+                                                   Variant="Variant.Filled" />
                                 </MudItem>
+
                                 <MudItem xs="12" sm="6">
-                                    <MudNumericField T="int"
-                                                     Label="Frames Lost"
-                                                     @bind-Value="playerGame.FramesLost"
-                                                     Variant="Variant.Filled"
-                                                     Min="0" />
+                                    <MudSwitch T="bool"
+                                               Label="Did Player Win?"
+                                               @bind-Value="playerGame.IsWin"
+                                               Color="Color.Success" />
                                 </MudItem>
+
                                 <MudItem xs="12">
-                                    <MudNumericField T="int"
-                                                     Label="Games Played"
-                                                     Value="playerGame.FramesWon + playerGame.FramesLost"
-                                                     Variant="Variant.Filled"
-                                                     Disabled />
+                                    <MudTextField T="string"
+                                                  Label="Notes (Optional)"
+                                                  @bind-Value="playerGame.Notes"
+                                                  Variant="Variant.Filled"
+                                                  Lines="3"
+                                                  MaxLength="500" />
+                                </MudItem>
+
+                                @if (existingGame != null)
+                                {
+                                    <MudItem xs="12">
+                                        <MudAlert Severity="Severity.Info">
+                                            <MudText>Existing game found for this player and week. Editing will update the existing record.</MudText>
+                                        </MudAlert>
+                                    </MudItem>
+                                }
+
+                                <MudItem xs="12" Class="d-flex justify-start gap-4 mt-4">
+                                    <MudButton Variant="Variant.Filled"
+                                               Color="Color.Success"
+                                               OnClick="AddOrUpdatePlayerGameAsync"
+                                               Disabled="selectedPlayerId == 0 || playerGame.WeekNumber == 0 || playerGame.TeamId == 0">
+                                        @(existingGame != null ? "Update Player Game" : "Save Player Game")
+                                    </MudButton>
+                                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ResetForm">Reset</MudButton>
+                                    @if (existingGame != null)
+                                    {
+                                        <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="DeletePlayerGameAsync">Delete Game</MudButton>
+                                    }
                                 </MudItem>
                             }
-
-                            <MudItem xs="12">
-                                <MudButton Variant="Variant.Filled"
-                                           Color="Color.Success"
-                                           OnClick="AddOrUpdatePlayerGameAsync"
-                                           Disabled="selectedPlayerId == 0 || playerGame.WeekNumber == 0">
-                                    Save Player Games
-                                </MudButton>
-                                <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="ResetForm">Reset</MudButton>
-                            </MudItem>
                         }
                     </MudGrid>
                 </MudForm>
             </MudPaper>
         </MudItem>
+
+        @if (selectedPlayerId > 0 && playerGamesForPlayer is not null && playerGamesForPlayer.Any())
+        {
+            <MudItem xs="12">
+                <MudPaper Class="pa-4">
+                    <MudText Typo="Typo.h6" Class="mb-4">@GetPlayerName(selectedPlayerId) - Game History</MudText>
+                    <MudTable Items="playerGamesForPlayer" Dense="true" Hover="true" Striped="true">
+                        <HeaderContent>
+                            <MudTh>Week</MudTh>
+                            <MudTh>Team</MudTh>
+                            <MudTh>Date</MudTh>
+                            <MudTh>Result</MudTh>
+                            <MudTh>Notes</MudTh>
+                            <MudTh>Actions</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Week">@context.WeekNumber</MudTd>
+                            <MudTd DataLabel="Team">@context.TeamName</MudTd>
+                            <MudTd DataLabel="Date">@context.GameDate.ToString("MM/dd/yyyy")</MudTd>
+                            <MudTd DataLabel="Result">
+                                <MudChip T="string" Color="@(context.IsWin ? Color.Success : Color.Error)" Size="Size.Small">
+                                    @(context.IsWin ? "Win" : "Loss")
+                                </MudChip>
+                            </MudTd>
+                            <MudTd DataLabel="Notes">@(string.IsNullOrEmpty(context.Notes) ? "-" : context.Notes)</MudTd>
+                            <MudTd DataLabel="Actions">
+                                <MudIconButton Icon="Icons.Material.Filled.Edit" 
+                                               Size="Size.Small" 
+                                               OnClick="@(() => EditPlayerGame(context))" />
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                </MudPaper>
+            </MudItem>
+        }
     </MudGrid>
 </MudContainer>
 
 @code {
-    private WPL_PlayerGame playerGame = new();
+    private PlayerGameViewModel playerGame = new();
     private int selectedPlayerId;
-    private List<WPL_Player>? allPlayers;
-    private List<WPL_PlayerGame>? allPlayerGames;
+    private List<PlayerViewModel>? allPlayers;
+    private List<TeamViewModel>? allTeams;
+    private List<PlayerGameViewModel>? allPlayerGames;
+    private List<PlayerGameViewModel>? playerGamesForPlayer;
+    private PlayerGameViewModel? existingGame;
     private bool isLoading = true;
+    private DateTime? gameDate = DateTime.Today;
 
     protected override async Task OnInitializedAsync()
     {
@@ -112,10 +185,21 @@
 
     private async Task LoadDataAsync()
     {
-        isLoading = true;
-        allPlayers = await DataFactory.GetPlayersAsync();
-        allPlayerGames = await DataFactory.GetAllPlayerGamesAsync();
-        isLoading = false;
+        try
+        {
+            isLoading = true;
+            allPlayers = await PlayerService.GetAllPlayersAsync();
+            allTeams = await TeamService.GetAllTeamsAsync();
+            allPlayerGames = await PlayerGameService.GetAllPlayerGamesAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading data: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
     }
 
     private void SetInitialWeekNumber()
@@ -135,7 +219,7 @@
         if (allPlayers is not null && playerId.HasValue)
         {
             var player = allPlayers.FirstOrDefault(p => p.PlayerId == playerId.Value);
-            return $"{player?.FirstName} {player?.LastName}";
+            return player?.FullName ?? string.Empty;
         }
         return string.Empty;
     }
@@ -145,8 +229,16 @@
         selectedPlayerId = playerId;
         if (selectedPlayerId > 0)
         {
-            playerGame.PlayerId = selectedPlayerId;
-            await CheckExistingGameAsync(playerGame.WeekNumber);
+            try
+            {
+                playerGame.PlayerId = selectedPlayerId;
+                playerGamesForPlayer = await PlayerGameService.GetPlayerGamesByPlayerAsync(selectedPlayerId);
+                await CheckExistingGameAsync(playerGame.WeekNumber);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error loading player data: {ex.Message}", Severity.Error);
+            }
         }
         else
         {
@@ -156,49 +248,131 @@
 
     private async Task CheckExistingGameAsync(int weekNumber)
     {
+        playerGame.WeekNumber = weekNumber;
+        
         if (allPlayerGames is not null && selectedPlayerId > 0)
         {
-            var existingRecord = allPlayerGames.FirstOrDefault(x => x.WeekNumber == weekNumber && x.PlayerId == selectedPlayerId);
-            if (existingRecord is not null)
+            existingGame = allPlayerGames.FirstOrDefault(x => x.WeekNumber == weekNumber && x.PlayerId == selectedPlayerId);
+            if (existingGame is not null)
             {
-                playerGame.PlayerGameId = existingRecord.PlayerGameId;
-                playerGame.FramesWon = existingRecord.FramesWon;
-                playerGame.FramesLost = existingRecord.FramesLost;
+                playerGame = new PlayerGameViewModel
+                {
+                    PlayerGameId = existingGame.PlayerGameId,
+                    PlayerId = existingGame.PlayerId,
+                    TeamId = existingGame.TeamId,
+                    WeekNumber = existingGame.WeekNumber,
+                    IsWin = existingGame.IsWin,
+                    GameDate = existingGame.GameDate,
+                    Notes = existingGame.Notes
+                };
+                gameDate = existingGame.GameDate;
             }
             else
             {
                 playerGame.PlayerGameId = 0;
-                playerGame.FramesWon = 0;
-                playerGame.FramesLost = 0;
+                playerGame.IsWin = false;
+                playerGame.Notes = string.Empty;
+                if (gameDate.HasValue)
+                    playerGame.GameDate = gameDate.Value;
             }
         }
         await Task.CompletedTask;
     }
 
+    private void EditPlayerGame(PlayerGameViewModel game)
+    {
+        playerGame = new PlayerGameViewModel
+        {
+            PlayerGameId = game.PlayerGameId,
+            PlayerId = game.PlayerId,
+            TeamId = game.TeamId,
+            WeekNumber = game.WeekNumber,
+            IsWin = game.IsWin,
+            GameDate = game.GameDate,
+            Notes = game.Notes
+        };
+        gameDate = game.GameDate;
+        existingGame = game;
+    }
+
     private async Task AddOrUpdatePlayerGameAsync()
     {
-        if (selectedPlayerId > 0)
+        if (selectedPlayerId > 0 && playerGame.TeamId > 0)
         {
-            var isNewGame = playerGame.PlayerGameId == 0;
-            var success = await DataFactory.SavePlayerGameAsync(playerGame);
-            if (success)
+            try
             {
-                var message = isNewGame ? "Games added successfully!" : "Games updated successfully!";
-                Snackbar.Add(message, Severity.Success);
-                await LoadDataAsync();
-                ResetForm();
+                // Update the game date from the date picker
+                if (gameDate.HasValue)
+                    playerGame.GameDate = gameDate.Value;
+
+                var isNewGame = playerGame.PlayerGameId == 0;
+                PlayerGameViewModel? result;
+
+                if (isNewGame)
+                {
+                    result = await PlayerGameService.CreatePlayerGameAsync(playerGame);
+                }
+                else
+                {
+                    result = await PlayerGameService.UpdatePlayerGameAsync(playerGame);
+                }
+
+                if (result != null)
+                {
+                    var message = isNewGame ? "Game added successfully!" : "Game updated successfully!";
+                    Snackbar.Add(message, Severity.Success);
+                    await LoadDataAsync();
+                    await LoadPlayerDataAsync(selectedPlayerId); // Refresh player games
+                    ResetForm();
+                }
+                else
+                {
+                    Snackbar.Add("Failed to save game. Please try again.", Severity.Error);
+                }
             }
-            else
+            catch (Exception ex)
             {
-                Snackbar.Add("Failed to save games. Please try again.", Severity.Error);
+                Snackbar.Add($"Error saving game: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task DeletePlayerGameAsync()
+    {
+        if (existingGame?.PlayerGameId > 0)
+        {
+            try
+            {
+                var success = await PlayerGameService.DeletePlayerGameAsync(existingGame.PlayerGameId);
+                
+                if (success)
+                {
+                    Snackbar.Add("Game deleted successfully!", Severity.Success);
+                    await LoadDataAsync();
+                    await LoadPlayerDataAsync(selectedPlayerId); // Refresh player games
+                    ResetForm();
+                }
+                else
+                {
+                    Snackbar.Add("Failed to delete game. Please try again.", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error deleting game: {ex.Message}", Severity.Error);
             }
         }
     }
 
     private void ResetForm()
     {
-        playerGame = new WPL_PlayerGame();
-        selectedPlayerId = 0;
+        playerGame = new PlayerGameViewModel
+        {
+            PlayerId = selectedPlayerId,
+            TeamId = 0
+        };
+        existingGame = null;
+        gameDate = DateTime.Today;
         SetInitialWeekNumber();
     }
-} *@
+}
