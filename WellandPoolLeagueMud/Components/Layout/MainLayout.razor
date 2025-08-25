@@ -10,14 +10,14 @@
         </MudAvatar>
         <MudText Typo="Typo.h5" Class="ml-3">Welland Pool League</MudText>
         <MudSpacer />
-      <LoginButton />
+        <LoginButton />
     </MudAppBar>
     <MudDrawer id="nav-drawer" @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
         <NavMenu />
     </MudDrawer>
     <MudMainContent Class="pt-16 pa-4" Style="margin-top: 20px; margin-bottom: 50px;">
         <MudPaper Class="pa-5 ma-2" Elevation="2">
-        @Body
+            @Body
         </MudPaper>
     </MudMainContent>
     <MudAppBar Bottom="true" Elevation="2" Dense="true">
@@ -25,11 +25,15 @@
         <MudText Typo="Typo.caption" Class="text-center">
             &copy; 2023 Welland Pool League
         </MudText>
+        <MudDivider DividerType="DividerType.Inset" />
+        &nbsp;
+        <MudText Typo="Typo.caption" Align="Align.Center">Developed and Maintained by Chris Wiley</MudText>
         &nbsp
         <MudDivider DividerType="DividerType.Inset" />
-        <MudIcon Icon="@Icons.Custom.Brands.MudBlazor" />udBlazor
+        <MudIcon Icon="@Icons.Custom.Brands.MudBlazor" />
+        <MudText Typo="Typo.caption">udBlazor</MudText>
         <MudSpacer />
-        </MudAppBar>
+    </MudAppBar>
 </MudLayout>
 
 
