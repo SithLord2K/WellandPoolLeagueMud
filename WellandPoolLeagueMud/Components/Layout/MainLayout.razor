@@ -1,8 +1,8 @@
 ﻿@inherits LayoutComponentBase
 @using WellandPoolLeagueMud.Components.Buttons
+@inject ISnackbar Snackbar
 
 <MudLayout>
-
     <MudAppBar Elevation="2">
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="DrawerToggle" />
         <MudAvatar Size="Size.Medium" Variant="Variant.Filled" Color="Color.Transparent" Elevation="2">
@@ -10,22 +10,29 @@
         </MudAvatar>
         <MudText Typo="Typo.h5" Class="ml-3">Welland Pool League</MudText>
         <MudSpacer />
-        @if(string.IsNullOrEmpty(Username))
+        @if (!string.IsNullOrEmpty(Username))
         {
-            <MudText Typo="Typo.subtitle1" Class="mr-2">Hello, Guest!</MudText>
-        }
-        else
-        {
-            <MudText Typo="Typo.subtitle1" Class="mr-2">Hello, @Username!</MudText>
+            <MudText Typo="Typo.subtitle1" Class="mr-2">Hello, @Username</MudText>
         }
         &nbsp;
-        <LoginButton />
+        <MudTooltip Text="Only League Admins need to log in." Placement="Placement.Bottom">
+            <LoginButton />
+        </MudTooltip>
     </MudAppBar>
     <MudDrawer id="nav-drawer" @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
         <NavMenu />
     </MudDrawer>
     <MudMainContent Class="pt-16 pa-4" Style="margin-top: 20px; margin-bottom: 50px;">
         <MudPaper Class="pa-5 ma-2" Elevation="2">
+            @if (Roles == "League_Admin" || Roles == "Super_User")
+            {
+                <MudAlert Severity="Severity.Info" Elevation="25" Variant="Variant.Filled" Dense="true" Class="text-center">
+                    You are logged in as an Admin user. Be careful when editing data.
+                    <br />
+                    There is no deleting allowed, contact Chris Wiley if something needs to be removed.
+                </MudAlert>
+            }
+            <br/>
             @Body
         </MudPaper>
     </MudMainContent>
@@ -36,7 +43,7 @@
         </MudText>
         <MudDivider DividerType="DividerType.Inset" />
         &nbsp;
-        <MudText Typo="Typo.caption" Align="Align.Center">Developed and Maintained by <MudLink Href="mailto:wileysoftware@gmail.com">Chris Wiley</MudLink></MudText>
+        <MudText Typo="Typo.caption" Align="Align.Center">Developed and Maintained by <MudLink Href="mailto:wileysoftware@gmail.com" Typo="Typo.caption">Chris Wiley</MudLink></MudText>
         &nbsp
         <MudDivider DividerType="DividerType.Inset" />
         <MudIcon Icon="@Icons.Custom.Brands.MudBlazor" />
@@ -95,7 +102,7 @@
                     .FirstOrDefault() ?? string.Empty;
 
                 // Remove Auth0 prefix
-               
+
 
                 Email = state.User.Claims
                     .Where(c => c.Type.Equals(@"https://wpl.codersden.com/email"))
@@ -107,6 +114,7 @@
                     .Select(c => c.Value)
                     .FirstOrDefault() ?? string.Empty;
             }
+            StateHasChanged();
         }
         base.OnInitialized();
     }
