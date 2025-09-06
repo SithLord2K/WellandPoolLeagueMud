@@ -1,4 +1,5 @@
 ﻿@page "/admin/playerdata"
+@attribute [Authorize(Roles = "League_Admin,Super_User,Team_Captain")]
 @using WellandPoolLeagueMud.Data.Services
 @using WellandPoolLeagueMud.Data.ViewModels
 @using MudBlazor
@@ -176,11 +177,15 @@
     private PlayerGameViewModel? existingGame;
     private bool isLoading = true;
     private DateTime? gameDate = DateTime.Today;
+    
+    
 
     protected override async Task OnInitializedAsync()
     {
         await LoadDataAsync();
         SetInitialWeekNumber();
+
+        
     }
 
     private async Task LoadDataAsync()

@@ -80,7 +80,7 @@
                                 <MudTh Style="width: 100px; text-align: center;">Status</MudTh>
                                 @if (!string.IsNullOrEmpty(weekGames.FirstOrDefault()?.Notes))
                                 {
-                                    <MudTh Style="width: 150px;">Notes</MudTh>
+                                    <MudTh Style="width: 150px;">Table #</MudTh>
                                 }
                             </HeaderContent>
                             <RowTemplate>
@@ -272,19 +272,10 @@
 
     private bool IsPlayoffGame(ScheduleViewModel schedule)
     {
-        // Method 1: Use predefined playoff week numbers
-        if (playoffWeekNumbers.Contains(schedule.WeekNumber))
-            return true;
 
-        // Method 2: Use notes to identify playoff games (if you mark them in notes)
-        if (!string.IsNullOrEmpty(schedule.Notes) &&
-            schedule.Notes.ToLower().Contains("playoff"))
+        var playoffStartDate = new DateTime(DateTime.Now.AddYears(1).Year, 4, 1); // Example: April 1st of next year
+        if (schedule.GameDate >= playoffStartDate)
             return true;
-
-        // Method 3: Use date range (example: playoffs start after a certain date)
-        // var playoffStartDate = new DateTime(DateTime.Now.Year, 10, 1); // Example: Oct 1st
-        // if (schedule.GameDate >= playoffStartDate)
-        //     return true;
 
         return false;
     }

@@ -10,6 +10,15 @@
         </MudAvatar>
         <MudText Typo="Typo.h5" Class="ml-3">Welland Pool League</MudText>
         <MudSpacer />
+        @if(string.IsNullOrEmpty(Username))
+        {
+            <MudText Typo="Typo.subtitle1" Class="mr-2">Hello, Guest!</MudText>
+        }
+        else
+        {
+            <MudText Typo="Typo.subtitle1" Class="mr-2">Hello, @Username!</MudText>
+        }
+        &nbsp;
         <LoginButton />
     </MudAppBar>
     <MudDrawer id="nav-drawer" @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
@@ -54,14 +63,51 @@
 <MudSnackbarProvider />
 
 @code {
+    // Authentication
+    [CascadingParameter]
+    private Task<AuthenticationState>? authenticationState { get; set; }
+
+    private List<Auth0Users> users = [];
+    private AuthenticationState? state { get; set; }
+
+    private string Username = "Anonymous";
+    private string UserId = "";
+    private string Email = "";
+    private string Roles = "";
 
     private bool _drawerOpen = true;
 
     private bool useDarkMode;
     private MudThemeProvider provider = new();
 
-    protected override void OnInitialized()
+    protected override async void OnInitialized()
     {
+        //Authentication
+        if (authenticationState is not null)
+        {
+            state = await authenticationState;
+            if (state.User.Identity is not null)
+            {
+                Username = state.User.Identity.Name ?? string.Empty;
+                UserId = state.User.Claims
+                    .Where(c => c.Type.Equals(@"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"))
+                    .Select(c => c.Value)
+                    .FirstOrDefault() ?? string.Empty;
+
+                // Remove Auth0 prefix
+               
+
+                Email = state.User.Claims
+                    .Where(c => c.Type.Equals(@"https://wpl.codersden.com/email"))
+                    .Select(c => c.Value)
+                    .FirstOrDefault() ?? string.Empty;
+
+                Roles = state.User.Claims
+                    .Where(c => c.Type.Equals(@"https://wpl.codersden.com/roles"))
+                    .Select(c => c.Value)
+                    .FirstOrDefault() ?? string.Empty;
+            }
+        }
         base.OnInitialized();
     }
 

@@ -10,14 +10,24 @@
         <MudNavLink Href="weekly_schedule" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Schema">Weekly</MudNavLink>
         <MudNavLink Href="playoff_schedule" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.DateRange">Playoffs</MudNavLink>
     </MudNavGroup>
-    <AuthorizeView Roles="League_Admin, Super_User">
-        <MudDivider />
-        <MudNavGroup Title="Admin" Icon="@Icons.Material.Filled.AdminPanelSettings">
-            <MudNavLink Href="admin/teams" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Group">Teams</MudNavLink>
-            <MudNavLink Href="admin/players" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Person">Players</MudNavLink>
-            <MudNavLink Href="admin/playerdata" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.DataArray">Player Data</MudNavLink>
-            <MudNavLink Href="admin/schedules" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Schedule">Schedules</MudNavLink>
-        </MudNavGroup>
+    <AuthorizeView Roles="League_Admin, Super_User, Team_Captain">
+        <Authorized>
+            <MudDivider />
+            <MudNavGroup Title="Admin" Icon="@Icons.Material.Filled.AdminPanelSettings">
+                <MudTooltip Text="Add/Edit Players">
+                    <MudNavLink Href="admin/players" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Person">Players</MudNavLink>
+                </MudTooltip>
+                <MudTooltip Text="Add/Edit Player Data (Game Data)">
+                    <MudNavLink Href="admin/playerdata" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.DataExploration">Player Data</MudNavLink>
+                </MudTooltip>
+                <MudTooltip Text="Add/Edit Teams">
+                    <MudNavLink Href="admin/teams" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Group">Teams</MudNavLink>
+                </MudTooltip>
+                <MudTooltip Text="Add/Edit Schedules">
+                    <MudNavLink Href="admin/schedules" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Schedule">Schedules</MudNavLink>
+                </MudTooltip>
+            </MudNavGroup>
+        </Authorized>
     </AuthorizeView>
     <MudDivider />
     <MudNavLink Href="/Downloads/Poolscoresheet.xls" Icon="@Icons.Material.Filled.Download">Download Scoresheet</MudNavLink>
