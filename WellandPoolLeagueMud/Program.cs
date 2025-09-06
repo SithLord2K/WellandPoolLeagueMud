@@ -17,7 +17,6 @@ builder.Services.AddScoped<ITeamService, TeamService>();
 builder.Services.AddScoped<IPlayerGameService, PlayerGameService>();
 builder.Services.AddScoped<IScheduleService, ScheduleService>();
 
-
 builder.Services.AddDbContextFactory<WellandPoolLeagueDbContext>(options =>
 {
     options.UseSqlServer(builder.Configuration.GetConnectionString("WPLStatsDB"));
