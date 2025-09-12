@@ -263,7 +263,9 @@
         background-color: var(--mud-palette-tertiary);
     }
 
-/* --- Mobile Responsive Styles --- */
+/* === Mobile Responsive Styles === */
+
+/* For tablets and smaller devices */
 @media (max-width: 768px) {
     /* Hide the user's name in the app bar to save space */
     .mud-appbar .user-name-text {
@@ -298,4 +300,18 @@
         .mud-appbar-bottom .mud-toolbar .mud-typography-caption {
             font-size: 0.65rem !important;
         }
+}
+
+/* NEW: For very narrow screens (modern phones) */
+@media (max-width: 480px) {
+    /* Hide the league name text to make room for the icon and buttons */
+    .mud-appbar .league-name-text {
+        display: none !important;
+    }
+
+    /* Further reduce the main headline font size */
+    #main-content-paper h1,
+    #main-content-paper h2 {
+        font-size: 1.3rem !important;
+    }
 }
