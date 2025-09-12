@@ -1,6 +1,12 @@
 ﻿@inherits LayoutComponentBase
 @using WellandPoolLeagueMud.Components.Buttons
+@using WellandPoolLeagueMud.Components.Themes
 @inject ISnackbar Snackbar
+
+<MudThemeProvider Theme="_poolLeagueTheme" @bind-IsDarkMode="@useDarkMode" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
 
 <MudLayout>
     <MudAppBar Elevation="2">
@@ -23,7 +29,7 @@
         <NavMenu />
     </MudDrawer>
     <MudMainContent Class="pt-16 pa-4" Style="margin-top: 20px; margin-bottom: 50px;">
-        <MudPaper Class="pa-5 ma-2" Elevation="2">
+        <MudPaper id="main-content-paper" Class="pa-5 ma-2" Elevation="2">
             @if (Roles == "League_Admin" || Roles == "Super_User")
             {
                 <MudAlert Severity="Severity.Info" Elevation="25" Variant="Variant.Filled" Dense="true" Class="text-center">
@@ -32,7 +38,7 @@
                     There is no deleting allowed, contact Chris Wiley if something needs to be removed.
                 </MudAlert>
             }
-            <br/>
+            <br />
             @Body
         </MudPaper>
     </MudMainContent>
@@ -59,16 +65,6 @@
     <span class="dismiss">🗙</span>
 </div>
 
-@*Required*@
-<MudThemeProvider @ref="@provider" @bind-IsDarkMode="@useDarkMode" />
-<MudPopoverProvider />
-
-@* Needed for dialogs *@
-<MudDialogProvider />
-
-@* Needed for snackbars *@
-<MudSnackbarProvider />
-
 @code {
     // Authentication
     [CascadingParameter]
@@ -77,6 +73,8 @@
     private List<Auth0Users> users = [];
     private AuthenticationState? state { get; set; }
 
+    private readonly MudTheme _poolLeagueTheme = new PoolLeagueTheme();
+
     private string Username = "Anonymous";
     private string UserId = "";
     private string Email = "";
@@ -84,7 +82,7 @@
 
     private bool _drawerOpen = true;
 
-    private bool useDarkMode;
+    private bool useDarkMode = true;
     private MudThemeProvider provider = new();
 
     protected override async void OnInitialized()
@@ -124,7 +122,12 @@
         _drawerOpen = !_drawerOpen;
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    private void ToggleDarkMode()
+    {
+        useDarkMode = !useDarkMode;
+    }
+
+    /*protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
@@ -133,7 +136,7 @@
             StateHasChanged();
         }
         await base.OnAfterRenderAsync(firstRender);
-    }
+    }*/
 
     private async Task OnSystemPreferenceChanged(bool newValue)
     {
@@ -142,3 +145,4 @@
         await Task.CompletedTask;
     }
 }
+

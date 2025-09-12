@@ -20,14 +20,14 @@
                        Date="selectedDate"
                        DateFormat="MM-dd-yyyy" />
 
-        <MudButton Variant="Variant.Outlined"
-                   Color="Color.Primary"
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Tertiary"
                    StartIcon="@Icons.Material.Filled.Today"
                    OnClick="@(() => JumpToCurrentWeek())">
             Current Week
         </MudButton>
 
-        <MudButton Variant="Variant.Text"
+        <MudButton Variant="Variant.Filled"
                    Color="Color.Secondary"
                    StartIcon="@Icons.Material.Filled.Refresh"
                    OnClick="@(() => LoadSchedule())"

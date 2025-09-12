@@ -112,15 +112,20 @@
 
                                 <MudItem xs="12" Class="d-flex justify-start gap-4 mt-4">
                                     <MudButton Variant="Variant.Filled"
-                                               Color="Color.Success"
+                                               Color="Color.Tertiary"
                                                OnClick="AddOrUpdatePlayerGameAsync"
                                                Disabled="selectedPlayerId == 0 || playerGame.WeekNumber == 0 || playerGame.TeamId == 0">
                                         @(existingGame != null ? "Update Player Game" : "Save Player Game")
                                     </MudButton>
-                                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ResetForm">Reset</MudButton>
+                                    <MudButton Variant="Variant.Filled"
+                                               Color="Color.Error"
+                                               StartIcon="@Icons.Material.Filled.Refresh"
+                                               OnClick="ResetForm">Reset</MudButton>
                                     @if (existingGame != null)
                                     {
-                                        <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="DeletePlayerGameAsync">Delete Game</MudButton>
+                                        <AuthorizeView Roles="Super_User">
+                                            <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="DeletePlayerGameAsync">Delete Game</MudButton>
+                                        </AuthorizeView>
                                     }
                                 </MudItem>
                             }
@@ -149,14 +154,14 @@
                             <MudTd DataLabel="Team">@context.TeamName</MudTd>
                             <MudTd DataLabel="Date">@context.GameDate.ToString("MM/dd/yyyy")</MudTd>
                             <MudTd DataLabel="Result">
-                                <MudChip T="string" Color="@(context.IsWin ? Color.Success : Color.Error)" Size="Size.Small">
+                                <MudChip T="string" Color="@(context.IsWin? Color.Success: Color.Error)" Size="Size.Small">
                                     @(context.IsWin ? "Win" : "Loss")
                                 </MudChip>
                             </MudTd>
                             <MudTd DataLabel="Notes">@(string.IsNullOrEmpty(context.Notes) ? "-" : context.Notes)</MudTd>
                             <MudTd DataLabel="Actions">
-                                <MudIconButton Icon="Icons.Material.Filled.Edit" 
-                                               Size="Size.Small" 
+                                <MudIconButton Icon="Icons.Material.Filled.Edit"
+                                               Size="Size.Small"
                                                OnClick="@(() => EditPlayerGame(context))" />
                             </MudTd>
                         </RowTemplate>
@@ -177,13 +182,13 @@
     private PlayerGameViewModel? existingGame;
     private bool isLoading = true;
     private DateTime? gameDate = DateTime.Today;
-    
+
     protected override async Task OnInitializedAsync()
     {
         await LoadDataAsync();
         SetInitialWeekNumber();
 
-        
+
     }
 
     private async Task LoadDataAsync()
@@ -252,7 +257,7 @@
     private async Task CheckExistingGameAsync(int weekNumber)
     {
         playerGame.WeekNumber = weekNumber;
-        
+
         if (allPlayerGames is not null && selectedPlayerId > 0)
         {
             existingGame = allPlayerGames.FirstOrDefault(x => x.WeekNumber == weekNumber && x.PlayerId == selectedPlayerId);
@@ -347,7 +352,7 @@
             try
             {
                 var success = await PlayerGameService.DeletePlayerGameAsync(existingGame.PlayerGameId);
-                
+
                 if (success)
                 {
                     Snackbar.Add("Game deleted successfully!", Severity.Success);

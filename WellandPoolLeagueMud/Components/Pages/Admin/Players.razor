@@ -100,13 +100,18 @@
                             }
 
                             <MudItem xs="12" Class="d-flex justify-start gap-4 mt-4">
-                                <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="SavePlayerAsync">
+                                <MudButton Variant="Variant.Filled" Color="Color.Tertiary" OnClick="SavePlayerAsync">
                                     @(player.PlayerId == 0 ? "Create Player" : "Update Player")
                                 </MudButton>
-                                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ResetForm">Reset</MudButton>
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Error"
+                                           StartIcon="@Icons.Material.Filled.Refresh"
+                                           OnClick="ResetForm">Reset</MudButton>
                                 @if (player.PlayerId > 0)
                                 {
-                                    <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="DeletePlayerAsync">Delete Player</MudButton>
+                                    <AuthorizeView Roles="Super_User">
+                                        <MudButton Variant="Variant.Filled" Color="Color.Warning" OnClick="DeletePlayerAsync">Delete Player</MudButton>
+                                    </AuthorizeView>
                                 }
                             </MudItem>
                         }
