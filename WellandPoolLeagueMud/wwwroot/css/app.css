@@ -1,42 +1,22 @@
-﻿#main-content-paper {
-    --mud-palette-surface: transparent !important; /* Override the theme variable */
-    background-color: transparent !important; /* Force the element's direct background color */
-    background-image: url('/css/felt-texture.png') !important;
-    background-repeat: repeat;
+﻿/* Enforce the correct heading font */
+#main-content-paper h1,
+#main-content-paper h2,
+#main-content-paper h3,
+#main-content-paper h4,
+#main-content-paper h5,
+#main-content-paper h6 {
+    font-family: 'Merriweather', serif !important;
 }
 
-    /* Enforce the correct heading font inside the main content area */
-    #main-content-paper h1,
-    #main-content-paper h2,
-    #main-content-paper h3,
-    #main-content-paper h4,
-    #main-content-paper h5,
-    #main-content-paper h6 {
-        font-family: 'Merriweather', serif !important;
-    }
-
+/* Fix for MudSelect Dropdown Text Color */
 .mud-popover .mud-list-item-text {
     color: var(--mud-palette-text-primary) !important;
 }
-/* Apply the wood grain texture to the main app bar and the nav drawer */
-.mud-appbar,
-#nav-drawer {
-    background-image: url('/css/wood-grain.png') !important;
-    background-size: cover !important;
+
+#nav-drawer .mud-nav-link-text {
+    text-shadow: 0px 0px 5px rgba(0, 0, 0, 0.8);
 }
 
-    /* Style the active navigation link with a "chalk mark" highlight */
-    #nav-drawer .mud-nav-link.active {
-        background-color: rgba(0, 0, 0, 0.2) !important;
-        border-left: 4px solid var(--mud-palette-tertiary);
-    }
-
-/* Style the info alert to be semi-transparent with a frosted glass effect */
-#main-content-paper .mud-alert-filled-info {
-    background-color: rgba(29, 161, 242, 0.25) !important;
-    border: 1px solid rgba(29, 161, 242, 0.5);
-    backdrop-filter: blur(5px);
-}
 
 /* Add a subtle lift and shadow effect to tertiary buttons on hover */
 .mud-button-filled-tertiary {
@@ -49,7 +29,34 @@
         box-shadow: 0 4px 10px rgba(0,0,0,0.5);
     }
 
-/* A helper class to apply the wood grain effect to any card */
+/* Apply dark textures */
+#main-content-paper {
+    --mud-palette-surface: transparent !important;
+    background-color: transparent !important;
+    background-image: url('/css/felt-texture.png') !important;
+    background-repeat: repeat;
+}
+
+.mud-appbar,
+#nav-drawer {
+    background-image: url('/css/wood-grain.png') !important;
+    background-size: cover !important;
+}
+
+/* Style the info alert for dark mode */
+#main-content-paper .mud-alert-filled-info {
+    background-color: rgba(29, 161, 242, 0.25) !important;
+    border: 1px solid rgba(29, 161, 242, 0.5);
+    backdrop-filter: blur(5px);
+}
+
+/* Style the active navigation link */
+#nav-drawer .mud-nav-link.active {
+    background-color: rgba(0, 0, 0, 0.2) !important;
+    border-left: 4px solid var(--mud-palette-tertiary);
+}
+
+/* A helper class to apply the wood grain effect to cards */
 .wood-grain-card {
     background-image: url('/css/wood-grain.png') !important;
     background-size: cover !important;
