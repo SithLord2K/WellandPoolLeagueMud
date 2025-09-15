@@ -9,7 +9,7 @@
 <MudSnackbarProvider />
 
 <MudLayout>
-    <MudAppBar Elevation="2">
+    <MudAppBar Elevation="6">
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="DrawerToggle" />
         <MudAvatar Size="Size.Medium" Variant="Variant.Filled" Color="Color.Transparent" Elevation="2">
             <MudImage Src="Images/appicon.png" Fluid="true" />
@@ -25,7 +25,7 @@
             <LoginButton />
         </MudTooltip>
     </MudAppBar>
-    <MudDrawer id="nav-drawer" @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
+    <MudDrawer id="nav-drawer" @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="6">
         <NavMenu />
     </MudDrawer>
     <MudMainContent Class="pt-16 pa-4" Style="margin-top: 20px; margin-bottom: 50px;">
@@ -42,7 +42,7 @@
             @Body
         </MudPaper>
     </MudMainContent>
-    <MudAppBar Bottom="true" Elevation="2" Dense="true">
+    <MudAppBar Bottom="true" Elevation="6" Dense="true">
         <MudSpacer />
         <MudText Typo="Typo.caption" Class="text-center">
             &copy; 2025 Welland Pool League
