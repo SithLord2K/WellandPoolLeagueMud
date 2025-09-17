@@ -168,7 +168,11 @@ else
             {
                 foreach (var team in teams)
                 {
-                    team.Players = (await TeamService.GetTeamRosterAsync(team.TeamId)).ToList();
+                    // Fetch the players for the team
+                    var players = await TeamService.GetTeamRosterAsync(team.TeamId);
+
+                    // Sort the players by WinPercentage descending and then assign them
+                    team.Players = players.OrderByDescending(p => p.WinPercentage).ToList();
                 }
             }
         }

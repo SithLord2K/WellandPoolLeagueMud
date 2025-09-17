@@ -1,7 +1,9 @@
 ﻿@inherits LayoutComponentBase
+@implements IDisposable
 @using WellandPoolLeagueMud.Components.Buttons
 @using WellandPoolLeagueMud.Components.Themes
 @inject ISnackbar Snackbar
+@inject NavigationManager NavManager
 
 <MudThemeProvider Theme="_poolLeagueTheme" @bind-IsDarkMode="@useDarkMode" />
 <MudPopoverProvider />
@@ -30,15 +32,14 @@
     </MudDrawer>
     <MudMainContent Class="pt-16 pa-4" Style="margin-top: 20px; margin-bottom: 50px;">
         <MudPaper id="main-content-paper" Class="pa-5 ma-2" Elevation="2">
-            @if (Roles == "League_Admin" || Roles == "Super_User")
+            @if ((Roles == "League_Admin" || Roles == "Super_User") && IsAdminPage())
             {
-                <MudAlert Severity="Severity.Info" Elevation="25" Variant="Variant.Filled" Dense="true" Class="text-center">
+                <MudAlert Severity="Severity.Info" Elevation="25" Variant="Variant.Filled" Dense="true" Class="text-center mb-4">
                     You are logged in as an Admin user. Be careful when editing data.
                     <br />
                     There is no deleting allowed, contact Chris Wiley if something needs to be removed.
                 </MudAlert>
             }
-            <br />
             @Body
         </MudPaper>
     </MudMainContent>
@@ -85,8 +86,16 @@
     private bool useDarkMode = true;
     private MudThemeProvider provider = new();
 
+    private bool IsAdminPage()
+    {
+        var absolutePath = new Uri(NavManager.Uri).AbsolutePath;
+        return absolutePath.StartsWith("/admin");
+    }
+
     protected override async void OnInitialized()
     {
+        NavManager.LocationChanged += OnLocationChanged;
+
         //Authentication
         if (authenticationState is not null)
         {
@@ -98,9 +107,6 @@
                     .Where(c => c.Type.Equals(@"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"))
                     .Select(c => c.Value)
                     .FirstOrDefault() ?? string.Empty;
-
-                // Remove Auth0 prefix
-
 
                 Email = state.User.Claims
                     .Where(c => c.Type.Equals(@"https://wpl.codersden.com/email"))
@@ -117,6 +123,16 @@
         base.OnInitialized();
     }
 
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        NavManager.LocationChanged -= OnLocationChanged;
+    }
+
     private void DrawerToggle()
     {
         _drawerOpen = !_drawerOpen;
@@ -127,17 +143,6 @@
         useDarkMode = !useDarkMode;
     }
 
-    /*protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            useDarkMode = await provider.GetSystemDarkModeAsync();
-            await provider.WatchSystemDarkModeAsync(OnSystemPreferenceChanged);
-            StateHasChanged();
-        }
-        await base.OnAfterRenderAsync(firstRender);
-    }*/
-
     private async Task OnSystemPreferenceChanged(bool newValue)
     {
         useDarkMode = newValue;
@@ -145,4 +150,3 @@
         await Task.CompletedTask;
     }
 }
-

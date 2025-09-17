@@ -15,7 +15,6 @@ namespace WellandPoolLeagueMud.Data.Services
 
         public async Task<List<TeamViewModel>> GetAllTeamsAsync()
         {
-            // Step 1: Get all teams with their basic info and player-based game stats.
             var teams = await _context.Teams
                 .Include(t => t.Captain)
                 .Include(t => t.PlayerGames)
@@ -32,16 +31,13 @@ namespace WellandPoolLeagueMud.Data.Services
                 .OrderBy(t => t.TeamName)
                 .ToListAsync();
 
-            // Step 2: Get all completed schedule results from the database.
             var allSchedules = await _context.Schedules.Where(s => s.WinningTeamId != null).ToListAsync();
 
-            // Step 3: Loop through each team to calculate its weekly record.
             foreach (var team in teams)
             {
-                // Weeks Won is a simple count of how many times the team's ID appears as the WinningTeamId.
+                // CORRECTED LOGIC: Use WinningTeamId to determine weekly record
                 team.WeeksWon = allSchedules.Count(s => s.WinningTeamId == team.TeamId);
 
-                // Weeks Lost is the count of games the team played (home or away) where they were NOT the winning team.
                 team.WeeksLost = allSchedules.Count(s =>
                     (s.HomeTeamId == team.TeamId || s.AwayTeamId == team.TeamId) &&
                     s.WinningTeamId != team.TeamId);
@@ -113,28 +109,29 @@ namespace WellandPoolLeagueMud.Data.Services
             var standings = await _context.Teams
                 .Include(t => t.Captain)
                 .Include(t => t.PlayerGames)
-                .Select(t => new
+                .Select(t => new TeamStandingViewModel
                 {
                     TeamId = t.TeamId,
                     TeamName = t.TeamName,
                     CaptainName = t.Captain != null ? (string.IsNullOrEmpty(t.Captain.LastName) ? t.Captain.FirstName : $"{t.Captain.FirstName} {t.Captain.LastName}") : null,
                     Wins = t.PlayerGames.Sum(pg => pg.Wins),
-                    Losses = t.PlayerGames.Sum(pg => pg.Losses)
-                })
-                .Select(t => new TeamStandingViewModel
-                {
-                    TeamId = t.TeamId,
-                    TeamName = t.TeamName,
-                    CaptainName = t.CaptainName,
-                    Wins = t.Wins,
-                    Losses = t.Losses,
-                    GamesPlayed = t.Wins + t.Losses,
-                    Points = t.Wins,
-                    WinPercentage = (t.Wins + t.Losses) > 0 ? (decimal)t.Wins / (t.Wins + t.Losses) * 100 : 0
+                    Losses = t.PlayerGames.Sum(pg => pg.Losses),
+                    GamesPlayed = t.PlayerGames.Sum(pg => pg.Wins + pg.Losses),
+                    Points = t.PlayerGames.Sum(pg => pg.Wins),
+                    WinPercentage = (t.PlayerGames.Sum(pg => pg.Wins + pg.Losses)) > 0
+                        ? (decimal)t.PlayerGames.Sum(pg => pg.Wins) / (t.PlayerGames.Sum(pg => pg.Wins + pg.Losses)) * 100
+                        : 0
                 })
                 .OrderByDescending(ts => ts.Points)
                 .ThenByDescending(ts => ts.WinPercentage)
                 .ToListAsync();
+
+            var allSchedules = await _context.Schedules.Where(s => s.WinningTeamId != null).ToListAsync();
+
+            foreach (var team in standings)
+            {
+                team.WeeksWon = allSchedules.Count(s => s.WinningTeamId == team.TeamId);
+            }
 
             for (int i = 0; i < standings.Count; i++)
             {

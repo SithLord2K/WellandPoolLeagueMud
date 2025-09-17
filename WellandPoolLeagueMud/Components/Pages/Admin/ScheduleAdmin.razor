@@ -51,6 +51,7 @@
                             <MudItem xs="12" sm="6">
                                 <MudDatePicker Label="Game Date"
                                                Date="schedule.GameDate"
+                                               DateChanged="@((DateTime? newDate) => schedule.GameDate = newDate ?? DateTime.Today)"
                                                DateFormat="MM/dd/yyyy"
                                                Variant="Variant.Filled"
                                                Required="true"
@@ -223,7 +224,7 @@
                         </HeaderContent>
                         <RowTemplate>
                             <MudTd DataLabel="Week">
-                                <MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="Variant.Text">
+                                <MudChip T="string" Color="Color.Default" Size="Size.Small" Variant="Variant.Text">
                                     Week @context.WeekNumber
                                 </MudChip>
                             </MudTd>
