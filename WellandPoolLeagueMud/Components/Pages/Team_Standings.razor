@@ -30,13 +30,14 @@
                           Immediate="true" />
         </ToolBarContent>
         <Columns>
-            <PropertyColumn Property="x => x.Rank" Title="Rank" Sortable="false">
+@*             <PropertyColumn Property="x => x.Rank" Title="Rank" Sortable="false">
                 <CellTemplate>
                     <MudChip Color="@GetRankColor(context.Item.Rank)" Size="Size.Small" Variant="Variant.Filled">
                         #@context.Item.Rank
                     </MudChip>
                 </CellTemplate>
-            </PropertyColumn>
+            </PropertyColumn> *@
+            <PropertyColumn Property="x => x.Division" Title="Division" Filterable="true" />
             <PropertyColumn Property="x => x.TeamName" Title="Team Name" Filterable="true" />
             <PropertyColumn Property="x => x.CaptainName" Title="Captain" Filterable="true">
                 <CellTemplate>
@@ -53,13 +54,7 @@
             <PropertyColumn Property="x => x.GamesPlayed" Title="Games Played" />
             <PropertyColumn Property="x => x.Wins" Title="Games Won" />
             <PropertyColumn Property="x => x.Losses" Title="Games Lost" />
-            <PropertyColumn Property="x => x.Points" Title="Points" Sortable="true">
-                <CellTemplate>
-                    <MudChip Color="Color.Primary" Size="Size.Small" Variant="Variant.Text">
-                        @context.Item.Points pts
-                    </MudChip>
-                </CellTemplate>
-            </PropertyColumn>
+
             <TemplateColumn Title="Win %" Sortable="true" SortBy="@(x => x.WinPercentage)">
                 <CellTemplate>
                     @if (context.Item.GamesPlayed > 0)
@@ -113,18 +108,16 @@ else
         {
             teamStandings = await TeamService.GetTeamStandingsAsync();
 
-            // Apply search filter if needed
             if (!string.IsNullOrWhiteSpace(searchString))
             {
                 teamStandings = teamStandings
                     .Where(t => t.TeamName.Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
-                               (t.CaptainName?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false))
+                                (t.CaptainName?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false))
                     .ToList();
             }
         }
         catch (Exception ex)
         {
-            // Handle error appropriately - you might want to inject ISnackbar for notifications
             Console.WriteLine($"Error loading team standings: {ex.Message}");
         }
     }
@@ -133,9 +126,9 @@ else
     {
         return rank switch
         {
-            1 => Color.Warning,     // Gold for 1st
-            2 => Color.Secondary,   // Silver for 2nd
-            3 => Color.Tertiary,    // Bronze for 3rd
+            1 => Color.Warning,
+            2 => Color.Secondary,
+            3 => Color.Tertiary,
             _ => Color.Default
         };
     }
@@ -152,7 +145,6 @@ else
         };
     }
 
-    // Optional: Add real-time search functionality
     private async Task OnSearchChanged(string value)
     {
         searchString = value;

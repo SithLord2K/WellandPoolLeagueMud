@@ -25,9 +25,9 @@ namespace WellandPoolLeagueMud.Data.Services
                     LastName = p.LastName,
                     TeamId = p.TeamId,
                     TeamName = p.Team != null ? p.Team.TeamName : null,
-                    GamesPlayed = p.PlayerGames.Count,
-                    GamesWon = p.PlayerGames.Count(pg => pg.IsWin),
-                    GamesLost = p.PlayerGames.Count(pg => !pg.IsWin)
+                    GamesPlayed = p.PlayerGames.Sum(pg => pg.Wins + pg.Losses),
+                    GamesWon = p.PlayerGames.Sum(pg => pg.Wins),
+                    GamesLost = p.PlayerGames.Sum(pg => pg.Losses)
                 })
                 .OrderBy(p => p.FirstName)
                 .ThenBy(p => p.LastName)
@@ -50,9 +50,9 @@ namespace WellandPoolLeagueMud.Data.Services
                 LastName = player.LastName,
                 TeamId = player.TeamId,
                 TeamName = player.Team?.TeamName,
-                GamesPlayed = player.PlayerGames.Count,
-                GamesWon = player.PlayerGames.Count(pg => pg.IsWin),
-                GamesLost = player.PlayerGames.Count(pg => !pg.IsWin)
+                GamesPlayed = player.PlayerGames.Sum(pg => pg.Wins + pg.Losses),
+                GamesWon = player.PlayerGames.Sum(pg => pg.Wins),
+                GamesLost = player.PlayerGames.Sum(pg => pg.Losses)
             };
         }
 
@@ -100,21 +100,28 @@ namespace WellandPoolLeagueMud.Data.Services
             var standings = await _context.Players
                 .Include(p => p.PlayerGames)
                 .Include(p => p.Team)
-                .Select(p => new PlayerStandingViewModel
+                .Select(p => new
                 {
                     PlayerId = p.PlayerId,
                     PlayerName = string.IsNullOrEmpty(p.LastName) ? p.FirstName : $"{p.FirstName} {p.LastName}",
                     TeamName = p.Team != null ? p.Team.TeamName : null,
-                    GamesPlayed = p.PlayerGames.Count,
-                    Wins = p.PlayerGames.Count(pg => pg.IsWin),
-                    Losses = p.PlayerGames.Count(pg => !pg.IsWin),
-                    WinPercentage = p.PlayerGames.Count > 0 ? (decimal)p.PlayerGames.Count(pg => pg.IsWin) / p.PlayerGames.Count * 100 : 0
+                    Wins = p.PlayerGames.Sum(pg => pg.Wins),
+                    Losses = p.PlayerGames.Sum(pg => pg.Losses)
+                })
+                .Select(p => new PlayerStandingViewModel
+                {
+                    PlayerId = p.PlayerId,
+                    PlayerName = p.PlayerName,
+                    TeamName = p.TeamName,
+                    Wins = p.Wins,
+                    Losses = p.Losses,
+                    GamesPlayed = p.Wins + p.Losses,
+                    WinPercentage = (p.Wins + p.Losses) > 0 ? (decimal)p.Wins / (p.Wins + p.Losses) * 100 : 0
                 })
                 .OrderByDescending(ps => ps.WinPercentage)
                 .ThenByDescending(ps => ps.Wins)
                 .ToListAsync();
 
-            // Add ranks
             for (int i = 0; i < standings.Count; i++)
             {
                 standings[i].Rank = i + 1;
@@ -141,9 +148,9 @@ namespace WellandPoolLeagueMud.Data.Services
                     LastName = p.LastName,
                     TeamId = p.TeamId,
                     TeamName = p.Team!.TeamName,
-                    GamesPlayed = p.PlayerGames.Count,
-                    GamesWon = p.PlayerGames.Count(pg => pg.IsWin),
-                    GamesLost = p.PlayerGames.Count(pg => !pg.IsWin)
+                    GamesPlayed = p.PlayerGames.Sum(pg => pg.Wins + pg.Losses),
+                    GamesWon = p.PlayerGames.Sum(pg => pg.Wins),
+                    GamesLost = p.PlayerGames.Sum(pg => pg.Losses)
                 })
                 .OrderBy(p => p.FirstName)
                 .ThenBy(p => p.LastName)

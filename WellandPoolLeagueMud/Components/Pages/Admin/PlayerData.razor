@@ -68,7 +68,6 @@
                                         }
                                     </MudSelect>
                                 </MudItem>
-
                                 <MudItem xs="12" sm="6">
                                     <MudNumericField T="int"
                                                      Label="Week Number"
@@ -85,13 +84,21 @@
                                                    Variant="Variant.Filled" />
                                 </MudItem>
 
-                                <MudItem xs="12" sm="6">
-                                    <MudSwitch T="bool"
-                                               Label="Did Player Win?"
-                                               @bind-Value="playerGame.IsWin"
-                                               Color="Color.Success" />
+                                <MudItem xs="12" sm="3">
+                                    <MudNumericField T="int"
+                                                     Label="Wins"
+                                                     @bind-Value="playerGame.Wins"
+                                                     Min="0"
+                                                     Variant="Variant.Filled" />
                                 </MudItem>
 
+                                <MudItem xs="12" sm="3">
+                                    <MudNumericField T="int"
+                                                     Label="Losses"
+                                                     @bind-Value="playerGame.Losses"
+                                                     Min="0"
+                                                     Variant="Variant.Filled" />
+                                </MudItem>
                                 <MudItem xs="12">
                                     <MudTextField T="string"
                                                   Label="Notes (Optional)"
@@ -145,7 +152,7 @@
                             <MudTh>Week</MudTh>
                             <MudTh>Team</MudTh>
                             <MudTh>Date</MudTh>
-                            <MudTh>Result</MudTh>
+                            <MudTh>Record</MudTh>
                             <MudTh>Notes</MudTh>
                             <MudTh>Actions</MudTh>
                         </HeaderContent>
@@ -153,14 +160,12 @@
                             <MudTd DataLabel="Week">@context.WeekNumber</MudTd>
                             <MudTd DataLabel="Team">@context.TeamName</MudTd>
                             <MudTd DataLabel="Date">@context.GameDate.ToString("MM/dd/yyyy")</MudTd>
-                            <MudTd DataLabel="Result">
-                                <MudChip T="string" Color="@(context.IsWin? Color.Success: Color.Error)" Size="Size.Small">
-                                    @(context.IsWin ? "Win" : "Loss")
-                                </MudChip>
+                            <MudTd DataLabel="Record">
+                                @context.Wins / @context.Losses
                             </MudTd>
                             <MudTd DataLabel="Notes">@(string.IsNullOrEmpty(context.Notes) ? "-" : context.Notes)</MudTd>
                             <MudTd DataLabel="Actions">
-                                <MudIconButton Icon="Icons.Material.Filled.Edit"
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
                                                Size="Size.Small"
                                                OnClick="@(() => EditPlayerGame(context))" />
                             </MudTd>
@@ -187,8 +192,6 @@
     {
         await LoadDataAsync();
         SetInitialWeekNumber();
-
-
     }
 
     private async Task LoadDataAsync()
@@ -241,6 +244,13 @@
             {
                 playerGame.PlayerId = selectedPlayerId;
                 playerGamesForPlayer = await PlayerGameService.GetPlayerGamesByPlayerAsync(selectedPlayerId);
+
+                var selectedPlayer = allPlayers?.FirstOrDefault(p => p.PlayerId == selectedPlayerId);
+                if (selectedPlayer?.TeamId != null)
+                {
+                    playerGame.TeamId = selectedPlayer.TeamId.Value;
+                }
+
                 await CheckExistingGameAsync(playerGame.WeekNumber);
             }
             catch (Exception ex)
@@ -269,7 +279,8 @@
                     PlayerId = existingGame.PlayerId,
                     TeamId = existingGame.TeamId,
                     WeekNumber = existingGame.WeekNumber,
-                    IsWin = existingGame.IsWin,
+                    Wins = existingGame.Wins,
+                    Losses = existingGame.Losses,
                     GameDate = existingGame.GameDate,
                     Notes = existingGame.Notes
                 };
@@ -277,11 +288,16 @@
             }
             else
             {
+                var currentTeamId = playerGame.TeamId;
+
                 playerGame.PlayerGameId = 0;
-                playerGame.IsWin = false;
+                playerGame.Wins = 0;
+                playerGame.Losses = 0;
                 playerGame.Notes = string.Empty;
                 if (gameDate.HasValue)
                     playerGame.GameDate = gameDate.Value;
+
+                playerGame.TeamId = currentTeamId;
             }
         }
         await Task.CompletedTask;
@@ -295,7 +311,8 @@
             PlayerId = game.PlayerId,
             TeamId = game.TeamId,
             WeekNumber = game.WeekNumber,
-            IsWin = game.IsWin,
+            Wins = game.Wins,
+            Losses = game.Losses,
             GameDate = game.GameDate,
             Notes = game.Notes
         };
@@ -309,7 +326,6 @@
         {
             try
             {
-                // Update the game date from the date picker
                 if (gameDate.HasValue)
                     playerGame.GameDate = gameDate.Value;
 
@@ -330,7 +346,7 @@
                     var message = isNewGame ? "Game added successfully!" : "Game updated successfully!";
                     Snackbar.Add(message, Severity.Success);
                     await LoadDataAsync();
-                    await LoadPlayerDataAsync(selectedPlayerId); // Refresh player games
+                    await LoadPlayerDataAsync(selectedPlayerId);
                     ResetForm();
                 }
                 else
@@ -357,7 +373,7 @@
                 {
                     Snackbar.Add("Game deleted successfully!", Severity.Success);
                     await LoadDataAsync();
-                    await LoadPlayerDataAsync(selectedPlayerId); // Refresh player games
+                    await LoadPlayerDataAsync(selectedPlayerId);
                     ResetForm();
                 }
                 else
@@ -374,10 +390,15 @@
 
     private void ResetForm()
     {
+        var selectedPlayer = allPlayers?.FirstOrDefault(p => p.PlayerId == selectedPlayerId);
+        var currentTeamId = selectedPlayer?.TeamId ?? 0;
+
         playerGame = new PlayerGameViewModel
         {
             PlayerId = selectedPlayerId,
-            TeamId = 0
+            TeamId = currentTeamId,
+            Wins = 0,
+            Losses = 0
         };
         existingGame = null;
         gameDate = DateTime.Today;

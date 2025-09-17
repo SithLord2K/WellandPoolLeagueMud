@@ -62,8 +62,8 @@ namespace WellandPoolLeagueMud.Migrations
                     b.Property<DateTime>("GameDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<bool>("IsWin")
-                        .HasColumnType("bit");
+                    b.Property<int>("Losses")
+                        .HasColumnType("int");
 
                     b.Property<string>("Notes")
                         .HasMaxLength(500)
@@ -76,6 +76,9 @@ namespace WellandPoolLeagueMud.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("WeekNumber")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Wins")
                         .HasColumnType("int");
 
                     b.HasKey("PlayerGameId");

@@ -18,7 +18,12 @@ namespace WellandPoolLeagueMud.Data.ViewModels
         [Range(1, 52, ErrorMessage = "Week Number must be between 1 and 52")]
         public int WeekNumber { get; set; }
 
-        public bool IsWin { get; set; }
+        [Range(0, 10, ErrorMessage = "Wins must be between 0 and 10")]
+        public int Wins { get; set; }
+
+        [Range(0, 10, ErrorMessage = "Losses must be between 0 and 10")]
+        public int Losses { get; set; }
+
 
         [Required(ErrorMessage = "Game Date is required")]
         public DateTime GameDate { get; set; }

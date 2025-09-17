@@ -1,5 +1,4 @@
-﻿// Data/Services/PlayerGameService.cs
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using WellandPoolLeagueMud.Data.Models;
 using WellandPoolLeagueMud.Data.ViewModels;
 
@@ -27,7 +26,8 @@ namespace WellandPoolLeagueMud.Data.Services
                     TeamId = pg.TeamId,
                     TeamName = pg.Team.TeamName,
                     WeekNumber = pg.WeekNumber,
-                    IsWin = pg.IsWin,
+                    Wins = pg.Wins,
+                    Losses = pg.Losses,
                     GameDate = pg.GameDate,
                     Notes = pg.Notes
                 })
@@ -53,7 +53,8 @@ namespace WellandPoolLeagueMud.Data.Services
                 TeamId = playerGame.TeamId,
                 TeamName = playerGame.Team.TeamName,
                 WeekNumber = playerGame.WeekNumber,
-                IsWin = playerGame.IsWin,
+                Wins = playerGame.Wins,
+                Losses = playerGame.Losses,
                 GameDate = playerGame.GameDate,
                 Notes = playerGame.Notes
             };
@@ -66,7 +67,8 @@ namespace WellandPoolLeagueMud.Data.Services
                 PlayerId = playerGameVM.PlayerId,
                 TeamId = playerGameVM.TeamId,
                 WeekNumber = playerGameVM.WeekNumber,
-                IsWin = playerGameVM.IsWin,
+                Wins = playerGameVM.Wins,
+                Losses = playerGameVM.Losses,
                 GameDate = playerGameVM.GameDate,
                 Notes = playerGameVM.Notes
             };
@@ -86,7 +88,8 @@ namespace WellandPoolLeagueMud.Data.Services
             playerGame.PlayerId = playerGameVM.PlayerId;
             playerGame.TeamId = playerGameVM.TeamId;
             playerGame.WeekNumber = playerGameVM.WeekNumber;
-            playerGame.IsWin = playerGameVM.IsWin;
+            playerGame.Wins = playerGameVM.Wins;
+            playerGame.Losses = playerGameVM.Losses;
             playerGame.GameDate = playerGameVM.GameDate;
             playerGame.Notes = playerGameVM.Notes;
 
@@ -118,7 +121,8 @@ namespace WellandPoolLeagueMud.Data.Services
                     TeamId = pg.TeamId,
                     TeamName = pg.Team.TeamName,
                     WeekNumber = pg.WeekNumber,
-                    IsWin = pg.IsWin,
+                    Wins = pg.Wins,
+                    Losses = pg.Losses,
                     GameDate = pg.GameDate,
                     Notes = pg.Notes
                 })
@@ -141,7 +145,8 @@ namespace WellandPoolLeagueMud.Data.Services
                     TeamId = pg.TeamId,
                     TeamName = pg.Team.TeamName,
                     WeekNumber = pg.WeekNumber,
-                    IsWin = pg.IsWin,
+                    Wins = pg.Wins,
+                    Losses = pg.Losses,
                     GameDate = pg.GameDate,
                     Notes = pg.Notes
                 })
@@ -164,7 +169,8 @@ namespace WellandPoolLeagueMud.Data.Services
                     TeamId = pg.TeamId,
                     TeamName = pg.Team.TeamName,
                     WeekNumber = pg.WeekNumber,
-                    IsWin = pg.IsWin,
+                    Wins = pg.Wins,
+                    Losses = pg.Losses,
                     GameDate = pg.GameDate,
                     Notes = pg.Notes
                 })

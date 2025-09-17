@@ -11,5 +11,6 @@
         public int Points { get; set; }
         public decimal WinPercentage { get; set; }
         public int Rank { get; set; }
+        public string Division { get; set; } = string.Empty;
     }
 }

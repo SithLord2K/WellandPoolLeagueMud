@@ -162,10 +162,8 @@ else
     {
         try
         {
-            // Get all teams
             teams = await TeamService.GetAllTeamsAsync();
             
-            // Load roster for each team
             if (teams != null)
             {
                 foreach (var team in teams)
@@ -176,7 +174,6 @@ else
         }
         catch (Exception ex)
         {
-            // Handle error appropriately - you might want to inject ISnackbar for notifications
             Console.WriteLine($"Error loading team rosters: {ex.Message}");
         }
     }
