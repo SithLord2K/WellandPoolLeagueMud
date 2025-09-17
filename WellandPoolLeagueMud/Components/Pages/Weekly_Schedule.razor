@@ -165,9 +165,9 @@
                                     <MudTd DataLabel="Notes">
                                         @if (!string.IsNullOrEmpty(context.Notes))
                                         {
-                                            <MudTooltip Text="@context.Notes">
-                                                <MudIcon Icon="@Icons.Material.Filled.StickyNote2" Size="Size.Small" Color="Color.Info" />
-                                            </MudTooltip>
+                                            <MudChip T="string" Color="Color.Dark" Size="Size.Small" Variant="Variant.Filled">
+                                                @context.Notes
+                                            </MudChip>
                                         }
                                     </MudTd>
                                 }
