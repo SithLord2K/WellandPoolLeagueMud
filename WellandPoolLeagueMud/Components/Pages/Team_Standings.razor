@@ -30,13 +30,13 @@
                           Immediate="true" />
         </ToolBarContent>
         <Columns>
-@*             <PropertyColumn Property="x => x.Rank" Title="Rank" Sortable="false">
-                <CellTemplate>
-                    <MudChip Color="@GetRankColor(context.Item.Rank)" Size="Size.Small" Variant="Variant.Filled">
-                        #@context.Item.Rank
-                    </MudChip>
-                </CellTemplate>
-            </PropertyColumn> *@
+            @* <PropertyColumn Property="x => x.Rank" Title="Rank" Sortable="false">
+                    <CellTemplate>
+                        <MudChip Color="@GetRankColor(context.Item.Rank)" Size="Size.Small" Variant="Variant.Filled">
+                            #@context.Item.Rank
+                        </MudChip>
+                    </CellTemplate>
+                </PropertyColumn> *@
             <PropertyColumn Property="x => x.Division" Title="Division" Filterable="true" />
             <PropertyColumn Property="x => x.TeamName" Title="Team Name" Filterable="true" />
             <PropertyColumn Property="x => x.CaptainName" Title="Captain" Filterable="true">
@@ -51,11 +51,14 @@
                     }
                 </CellTemplate>
             </PropertyColumn>
+
+            <PropertyColumn Property="x => x.WeeksWon" Title="Weeks Won" />
+
             <PropertyColumn Property="x => x.GamesPlayed" Title="Games Played" />
             <PropertyColumn Property="x => x.Wins" Title="Games Won" />
             <PropertyColumn Property="x => x.Losses" Title="Games Lost" />
 
-            <TemplateColumn Title="Win %" Sortable="true" SortBy="@(x => x.WinPercentage)">
+           @*  <TemplateColumn Title="Win %" Sortable="true" SortBy="@(x => x.WinPercentage)">
                 <CellTemplate>
                     @if (context.Item.GamesPlayed > 0)
                     {
@@ -68,7 +71,7 @@
                         <MudText>-</MudText>
                     }
                 </CellTemplate>
-            </TemplateColumn>
+            </TemplateColumn> *@
         </Columns>
         <PagerContent>
             <MudDataGridPager T="TeamStandingViewModel" />

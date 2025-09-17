@@ -12,14 +12,14 @@
 {
     <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="px-2">
         <div class="d-flex justify-center mb-4">
-            <MudTextField @bind-Value="searchString" 
-                         Placeholder="Search teams or players..." 
-                         Adornment="Adornment.Start" 
-                         AdornmentIcon="@Icons.Material.Filled.Search" 
-                         IconSize="Size.Medium" 
-                         Class="mt-0"
-                         Style="max-width: 400px;"
-                         Immediate="true" />
+            <MudTextField @bind-Value="searchString"
+                          Placeholder="Search teams or players..."
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          IconSize="Size.Medium"
+                          Class="mt-0"
+                          Style="max-width: 400px;"
+                          Immediate="true" />
         </div>
 
         @foreach (var team in filteredTeams)
@@ -109,8 +109,8 @@
                     {
                         <div class="d-flex align-center">
                             <MudText Typo="Typo.caption" Class="mud-text-secondary mr-2">Team Record:</MudText>
-                            <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Text">@team.GamesWon W</MudChip>
-                            <MudChip T="string" Color="Color.Error" Size="Size.Small" Variant="Variant.Text" Class="ml-1">@team.GamesLost L</MudChip>
+                            <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Text">@team.WeeksWon W</MudChip>
+                            <MudChip T="string" Color="Color.Error" Size="Size.Small" Variant="Variant.Text" Class="ml-1">@team.WeeksLost L</MudChip>
                         </div>
                     }
                 </MudCardActions>
@@ -147,10 +147,10 @@ else
     private List<TeamViewModel>? teams;
     private string searchString = "";
 
-    private IEnumerable<TeamViewModel> filteredTeams => 
-        teams?.Where(t => string.IsNullOrWhiteSpace(searchString) || 
-                         t.TeamName.Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
-                         t.Players.Any(p => p.FullName.Contains(searchString, StringComparison.OrdinalIgnoreCase))) ?? 
+    private IEnumerable<TeamViewModel> filteredTeams =>
+        teams?.Where(t => string.IsNullOrWhiteSpace(searchString) ||
+                          t.TeamName.Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
+                          t.Players.Any(p => p.FullName.Contains(searchString, StringComparison.OrdinalIgnoreCase))) ??
         Enumerable.Empty<TeamViewModel>();
 
     protected override async Task OnInitializedAsync()
@@ -163,7 +163,7 @@ else
         try
         {
             teams = await TeamService.GetAllTeamsAsync();
-            
+
             if (teams != null)
             {
                 foreach (var team in teams)
@@ -188,7 +188,7 @@ else
             return $"{parts[0][0]}{parts[1][0]}".ToUpper();
         else if (parts.Length == 1)
             return $"{parts[0][0]}".ToUpper();
-        
+
         return "?";
     }
 

@@ -141,7 +141,7 @@
                                 <div class="d-flex align-center">
                                     @if (context.PlayerId == player.PlayerId)
                                     {
-                                        <MudIcon Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" Class="mr-2" />
+                                        <MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="Variant.Filled">New</MudChip>
                                     }
                                     @context.FullName
                                 </div>
@@ -151,8 +151,9 @@
                             <MudTd DataLabel="Losses" Style="text-align: center;">@context.GamesLost</MudTd>
                             <MudTd DataLabel="Win %" Style="text-align: center;">@context.WinPercentage.ToString("F1")%</MudTd>
                             <MudTd DataLabel="Actions" Style="text-align: center;">
-                                <MudIconButton Icon="Icons.Material.Filled.Edit"
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
                                                Size="Size.Small"
+                                               Color="Color.Primary"
                                                OnClick="@(() => EditPlayer(context))" />
                             </MudTd>
                         </RowTemplate>
@@ -214,8 +215,9 @@
                             <MudTd DataLabel="Losses" Style="text-align: center;">@context.GamesLost</MudTd>
                             <MudTd DataLabel="Win %" Style="text-align: center;">@context.WinPercentage.ToString("F1")%</MudTd>
                             <MudTd DataLabel="Actions" Style="text-align: center;">
-                                <MudIconButton Icon="Icons.Material.Filled.Edit"
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
                                                Size="Size.Small"
+                                               Color="Color.Primary"
                                                OnClick="@(() => EditPlayer(context))" />
                             </MudTd>
                         </RowTemplate>

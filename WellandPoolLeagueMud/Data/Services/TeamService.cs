@@ -15,7 +15,8 @@ namespace WellandPoolLeagueMud.Data.Services
 
         public async Task<List<TeamViewModel>> GetAllTeamsAsync()
         {
-            return await _context.Teams
+            // Step 1: Get all teams with their basic info and player-based game stats.
+            var teams = await _context.Teams
                 .Include(t => t.Captain)
                 .Include(t => t.PlayerGames)
                 .Select(t => new TeamViewModel
@@ -30,6 +31,23 @@ namespace WellandPoolLeagueMud.Data.Services
                 })
                 .OrderBy(t => t.TeamName)
                 .ToListAsync();
+
+            // Step 2: Get all completed schedule results from the database.
+            var allSchedules = await _context.Schedules.Where(s => s.WinningTeamId != null).ToListAsync();
+
+            // Step 3: Loop through each team to calculate its weekly record.
+            foreach (var team in teams)
+            {
+                // Weeks Won is a simple count of how many times the team's ID appears as the WinningTeamId.
+                team.WeeksWon = allSchedules.Count(s => s.WinningTeamId == team.TeamId);
+
+                // Weeks Lost is the count of games the team played (home or away) where they were NOT the winning team.
+                team.WeeksLost = allSchedules.Count(s =>
+                    (s.HomeTeamId == team.TeamId || s.AwayTeamId == team.TeamId) &&
+                    s.WinningTeamId != team.TeamId);
+            }
+
+            return teams;
         }
 
         public async Task<TeamViewModel?> GetTeamByIdAsync(int id)

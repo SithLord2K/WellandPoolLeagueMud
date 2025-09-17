@@ -16,8 +16,10 @@ namespace WellandPoolLeagueMud.Data.ViewModels
         public int GamesPlayed { get; set; }
         public int GamesWon { get; set; }
         public int GamesLost { get; set; }
+        public int WeeksWon { get; set; }
+        public int WeeksLost { get; set; }
         public decimal WinPercentage => GamesPlayed > 0 ? (decimal)GamesWon / GamesPlayed * 100 : 0;
-        public int Points => GamesWon * 2; // Assuming 2 points per win
+        public int Points => GamesWon * 2;
 
         public List<PlayerViewModel> Players { get; set; } = new List<PlayerViewModel>();
     }
