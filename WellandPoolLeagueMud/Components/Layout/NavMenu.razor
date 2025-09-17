@@ -1,28 +1,39 @@
-﻿
-<MudNavMenu>
-    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
-    <MudNavLink Href="team_rosters" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Group">Rosters</MudNavLink>
-    <MudNavGroup Title="Standings" Icon="@Icons.Material.Filled.ViewList">
-        <MudNavLink Href="player_standings" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Groups2">Player Standings</MudNavLink>
-        <MudNavLink Href="team_standings" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.GroupWork">Team Standings</MudNavLink>
-    </MudNavGroup>
-    <MudNavGroup Title="Schedules" Icon="@Icons.Material.Filled.Schedule">
-        <MudNavLink Href="weekly_schedule" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Schema">Weekly</MudNavLink>
-        <MudNavLink Href="playoff_schedule" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.DateRange">Playoffs</MudNavLink>
-    </MudNavGroup>
-    <AuthorizeView Roles="League_Admin, Super_User, Team_Captain">
-        <Authorized>
-            <MudDivider />
-            <MudNavGroup Title="Admin" Icon="@Icons.Material.Filled.AdminPanelSettings">
-                <MudNavLink Href="admin/players" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Person">Players</MudNavLink>
-                <MudNavLink Href="admin/playerdata" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.DataExploration">Player Data</MudNavLink>
-                <MudNavLink Href="admin/teams" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Group">Teams</MudNavLink>
-                <MudNavLink Href="admin/schedules" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Schedule">Schedules</MudNavLink>
-            </MudNavGroup>
-        </Authorized>
-    </AuthorizeView>
-    <MudDivider />
-    <MudNavLink Href="/Downloads/Poolscoresheet.xls" Icon="@Icons.Material.Filled.Download">Download Scoresheet</MudNavLink>
+﻿<MudNavMenu Style="height: 100%; display: flex; flex-direction: column;">
+
+    <div>
+        <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
+        <MudNavLink Href="team_rosters" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Group">Rosters</MudNavLink>
+        <MudNavGroup Title="Standings" Icon="@Icons.Material.Filled.ViewList">
+            <MudNavLink Href="player_standings" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Groups2">Player Standings</MudNavLink>
+            <MudNavLink Href="team_standings" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.GroupWork">Team Standings</MudNavLink>
+        </MudNavGroup>
+        <MudNavGroup Title="Schedules" Icon="@Icons.Material.Filled.Schedule">
+            <MudNavLink Href="weekly_schedule" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Schema">Weekly</MudNavLink>
+            <MudNavLink Href="playoff_schedule" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.DateRange">Playoffs</MudNavLink>
+        </MudNavGroup>
+        <AuthorizeView Roles="League_Admin, Super_User, Team_Captain">
+            <Authorized>
+                <MudDivider />
+                <MudNavGroup Title="Admin" Icon="@Icons.Material.Filled.AdminPanelSettings">
+                    <MudNavLink Href="admin/players" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Person">Players</MudNavLink>
+                    <MudNavLink Href="admin/playerdata" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.DataExploration">Player Data</MudNavLink>
+                    <MudNavLink Href="admin/teams" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Group">Teams</MudNavLink>
+                    <MudNavLink Href="admin/schedules" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Schedule">Schedules</MudNavLink>
+                </MudNavGroup>
+            </Authorized>
+        </AuthorizeView>
+        <MudDivider />
+        <MudNavLink Href="/Downloads/Poolscoresheet.xls" Icon="@Icons.Material.Filled.Download">Scoresheet Download</MudNavLink>
+    </div> <div class="pa-4 mt-auto" style="margin-bottom: 45px;">
+        <MudButton Href="https://www.buymeacoffee.com/wileysoftware"
+                   Target="_blank"
+                   Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   FullWidth="true"
+                   StartIcon="@Icons.Material.Filled.LocalDrink"
+                   Style="text-transform:none;">
+            Like the work? <br /> Buy Me a Beer!
+        </MudButton>
+    </div>
+
 </MudNavMenu>
-
-
