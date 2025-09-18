@@ -2,8 +2,10 @@
 @implements IDisposable
 @using WellandPoolLeagueMud.Components.Buttons
 @using WellandPoolLeagueMud.Components.Themes
+@using WellandPoolLeagueMud.Services
 @inject ISnackbar Snackbar
 @inject NavigationManager NavManager
+@inject AppState AppState
 
 <MudThemeProvider Theme="_poolLeagueTheme" @bind-IsDarkMode="@useDarkMode" />
 <MudPopoverProvider />
@@ -18,9 +20,9 @@
         </MudAvatar>
         <MudText Typo="Typo.h5" Class="ml-3 league-name-text">Welland Pool League</MudText>
         <MudSpacer />
-        @if (!string.IsNullOrEmpty(Username))
+        @if (AppState.IsLoggedIn)
         {
-            <MudText Typo="Typo.subtitle1" Class="mr-2 user-name-text">Hello, @Username</MudText>
+            <MudText Typo="Typo.subtitle1" Class="mr-2 user-name-text">Hello, @AppState.Username</MudText>
         }
         &nbsp;
         <MudTooltip Text="Only League Admins need to log in." Placement="Placement.Bottom">
@@ -32,7 +34,7 @@
     </MudDrawer>
     <MudMainContent Class="pt-16 pa-4" Style="margin-top: 20px; margin-bottom: 50px;">
         <MudPaper id="main-content-paper" Class="pa-5 ma-2" Elevation="2">
-            @if ((Roles == "League_Admin" || Roles == "Super_User") && IsAdminPage())
+            @if ((AppState.Roles == "League_Admin" || AppState.Roles == "Super_User") && IsAdminPage())
             {
                 <MudAlert Severity="Severity.Info" Elevation="25" Variant="Variant.Filled" Dense="true" Class="text-center mb-4">
                     You are logged in as an Admin user. Be careful when editing data.
@@ -46,7 +48,7 @@
     <MudAppBar Bottom="true" Elevation="6" Dense="true">
         <MudSpacer />
         <MudText Typo="Typo.caption" Class="text-center">
-            &copy; 2025 Welland Pool League
+            &copy; @DateTime.Now.Year Welland Pool League
         </MudText>
         <MudDivider DividerType="DividerType.Inset" />
         &nbsp;
@@ -59,7 +61,6 @@
     </MudAppBar>
 </MudLayout>
 
-
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.
     <a href="." class="reload">Reload</a>
@@ -67,24 +68,25 @@
 </div>
 
 @code {
-    // Authentication
     [CascadingParameter]
     private Task<AuthenticationState>? authenticationState { get; set; }
 
-    private List<Auth0Users> users = [];
-    private AuthenticationState? state { get; set; }
-
     private readonly MudTheme _poolLeagueTheme = new PoolLeagueTheme();
-
-    private string Username = "Anonymous";
-    private string UserId = "";
-    private string Email = "";
-    private string Roles = "";
-
     private bool _drawerOpen = true;
-
     private bool useDarkMode = true;
-    private MudThemeProvider provider = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Subscribe to the state change event
+        AppState.OnChange += StateHasChanged;
+
+        if (authenticationState is not null)
+        {
+            var state = await authenticationState;
+            // Set the user in the central state service
+            AppState.SetUser(state.User);
+        }
+    }
 
     private bool IsAdminPage()
     {
@@ -92,61 +94,14 @@
         return absolutePath.StartsWith("/admin");
     }
 
-    protected override async void OnInitialized()
-    {
-        NavManager.LocationChanged += OnLocationChanged;
-
-        //Authentication
-        if (authenticationState is not null)
-        {
-            state = await authenticationState;
-            if (state.User.Identity is not null)
-            {
-                Username = state.User.Identity.Name ?? string.Empty;
-                UserId = state.User.Claims
-                    .Where(c => c.Type.Equals(@"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"))
-                    .Select(c => c.Value)
-                    .FirstOrDefault() ?? string.Empty;
-
-                Email = state.User.Claims
-                    .Where(c => c.Type.Equals(@"https://wpl.codersden.com/email"))
-                    .Select(c => c.Value)
-                    .FirstOrDefault() ?? string.Empty;
-
-                Roles = state.User.Claims
-                    .Where(c => c.Type.Equals(@"https://wpl.codersden.com/roles"))
-                    .Select(c => c.Value)
-                    .FirstOrDefault() ?? string.Empty;
-            }
-            StateHasChanged();
-        }
-        base.OnInitialized();
-    }
-
-    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
-    {
-        InvokeAsync(StateHasChanged);
-    }
-
-    public void Dispose()
-    {
-        NavManager.LocationChanged -= OnLocationChanged;
-    }
-
     private void DrawerToggle()
     {
         _drawerOpen = !_drawerOpen;
     }
 
-    private void ToggleDarkMode()
+    // Unsubscribe from the event when the component is destroyed to prevent memory leaks
+    public void Dispose()
     {
-        useDarkMode = !useDarkMode;
-    }
-
-    private async Task OnSystemPreferenceChanged(bool newValue)
-    {
-        useDarkMode = newValue;
-        StateHasChanged();
-        await Task.CompletedTask;
+        AppState.OnChange -= StateHasChanged;
     }
 }

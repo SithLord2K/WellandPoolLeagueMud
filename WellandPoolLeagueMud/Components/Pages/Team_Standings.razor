@@ -5,6 +5,7 @@
 @using WellandPoolLeagueMud.Data.Services
 @using WellandPoolLeagueMud.Data.ViewModels
 @inject ITeamService TeamService
+@inject ISnackbar Snackbar
 
 <PageTitle>Team Standings</PageTitle>
 
@@ -30,13 +31,6 @@
                           Immediate="true" />
         </ToolBarContent>
         <Columns>
-            @* <PropertyColumn Property="x => x.Rank" Title="Rank" Sortable="false">
-                    <CellTemplate>
-                        <MudChip Color="@GetRankColor(context.Item.Rank)" Size="Size.Small" Variant="Variant.Filled">
-                            #@context.Item.Rank
-                        </MudChip>
-                    </CellTemplate>
-                </PropertyColumn> *@
             <PropertyColumn Property="x => x.Division" Title="Division" Filterable="true" />
             <PropertyColumn Property="x => x.TeamName" Title="Team Name" Filterable="true" />
             <PropertyColumn Property="x => x.CaptainName" Title="Captain" Filterable="true">
@@ -51,27 +45,10 @@
                     }
                 </CellTemplate>
             </PropertyColumn>
-
             <PropertyColumn Property="x => x.WeeksWon" Title="Weeks Won" />
-
             <PropertyColumn Property="x => x.GamesPlayed" Title="Games Played" />
             <PropertyColumn Property="x => x.Wins" Title="Games Won" />
             <PropertyColumn Property="x => x.Losses" Title="Games Lost" />
-
-           @*  <TemplateColumn Title="Win %" Sortable="true" SortBy="@(x => x.WinPercentage)">
-                <CellTemplate>
-                    @if (context.Item.GamesPlayed > 0)
-                    {
-                        <MudChip Color="@GetWinPercentageColor(context.Item.WinPercentage)" Size="Size.Small">
-                            @context.Item.WinPercentage.ToString("F1")%
-                        </MudChip>
-                    }
-                    else
-                    {
-                        <MudText>-</MudText>
-                    }
-                </CellTemplate>
-            </TemplateColumn> *@
         </Columns>
         <PagerContent>
             <MudDataGridPager T="TeamStandingViewModel" />
@@ -119,9 +96,10 @@ else
                     .ToList();
             }
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"Error loading team standings: {ex.Message}");
+            Snackbar.Add("Error loading team standings. Please try again later.", Severity.Error);
+            teamStandings = new List<TeamStandingViewModel>();
         }
     }
 

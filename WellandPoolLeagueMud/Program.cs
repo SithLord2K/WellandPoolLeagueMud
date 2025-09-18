@@ -8,6 +8,7 @@ using WellandPoolLeagueMud.AuthenticationStateSyncer.PersistingRevalidatingAuthe
 using WellandPoolLeagueMud.Components;
 using WellandPoolLeagueMud.Data;
 using WellandPoolLeagueMud.Data.Services;
+using WellandPoolLeagueMud.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +17,7 @@ builder.Services.AddScoped<IPlayerService, PlayerService>();
 builder.Services.AddScoped<ITeamService, TeamService>();
 builder.Services.AddScoped<IPlayerGameService, PlayerGameService>();
 builder.Services.AddScoped<IScheduleService, ScheduleService>();
+builder.Services.AddScoped<AppState>();
 
 builder.Services.AddDbContextFactory<WellandPoolLeagueDbContext>(options =>
 {
