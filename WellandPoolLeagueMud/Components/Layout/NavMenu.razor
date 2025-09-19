@@ -11,7 +11,7 @@
             <MudNavLink Href="weekly_schedule" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Schema">Weekly</MudNavLink>
             <MudNavLink Href="playoff_schedule" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.DateRange">Playoffs</MudNavLink>
         </MudNavGroup>
-        <AuthorizeView Roles="League_Admin, Super_User, Team_Captain">
+        <AuthorizeView Roles="League_Admin, Super_User">
             <Authorized>
                 <MudDivider />
                 <MudNavGroup Title="Admin" Icon="@Icons.Material.Filled.AdminPanelSettings">
