@@ -365,3 +365,4 @@ MigrationBackup/
 FodyWeavers.xsd
 /WellandPoolLeagueMud/appsettings.json
 /WellandPoolLeagueMud/appsettings.Development.json
+/WellandPoolLeagueMud.API/appsettings.json
