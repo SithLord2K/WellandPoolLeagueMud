@@ -366,3 +366,5 @@ FodyWeavers.xsd
 /WellandPoolLeagueMud/appsettings.json
 /WellandPoolLeagueMud/appsettings.Development.json
 /WellandPoolLeagueMud.API/appsettings.json
+/WellandPoolLeagueMud/appsettings.Production.json
+/WellandPoolLeagueMud/Properties/launchSettings.json
