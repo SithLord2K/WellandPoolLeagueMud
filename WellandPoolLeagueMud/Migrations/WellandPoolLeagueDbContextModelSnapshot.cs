@@ -22,6 +22,35 @@ namespace WellandPoolLeagueMud.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("UserProfile", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Auth0UserId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FirstName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("LastName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Auth0UserId")
+                        .IsUnique()
+                        .HasFilter("[Auth0UserId] IS NOT NULL");
+
+                    b.ToTable("WPLMud_UserProfiles", (string)null);
+                });
+
             modelBuilder.Entity("WellandPoolLeagueMud.Data.Models.Player", b =>
                 {
                     b.Property<int>("PlayerId")
@@ -162,7 +191,7 @@ namespace WellandPoolLeagueMud.Migrations
             modelBuilder.Entity("WellandPoolLeagueMud.Data.Models.Player", b =>
                 {
                     b.HasOne("WellandPoolLeagueMud.Data.Models.Team", "Team")
-                        .WithMany()
+                        .WithMany("Players")
                         .HasForeignKey("TeamId")
                         .OnDelete(DeleteBehavior.SetNull);
 
@@ -238,6 +267,8 @@ namespace WellandPoolLeagueMud.Migrations
                     b.Navigation("HomeGames");
 
                     b.Navigation("PlayerGames");
+
+                    b.Navigation("Players");
 
                     b.Navigation("WonGames");
                 });

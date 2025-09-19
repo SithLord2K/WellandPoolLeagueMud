@@ -1,0 +1,65 @@
+﻿@page "/profile"
+@attribute [Authorize] // Ensures only logged-in users can access this page
+
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@using WellandPoolLeagueMud.Data.Models
+@using WellandPoolLeagueMud.Data.Services
+@inject IUserProfileService UserProfileService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ISnackbar Snackbar
+
+<PageTitle>My Profile</PageTitle>
+
+@if (_userProfile == null)
+{
+    <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+}
+else
+{
+    <MudCard Elevation="3">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h5">@_userProfile.FirstName's Profile</MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <MudGrid>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="_userProfile.FirstName" Label="First Name" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="_userProfile.LastName" Label="Last Name" Variant="Variant.Outlined" />
+                </MudItem>
+            </MudGrid>
+        </MudCardContent>
+        <MudCardActions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveChanges" Class="ml-2 mb-2">Save Changes</MudButton>
+        </MudCardActions>
+    </MudCard>
+}
+
+@code {
+    private UserProfile? _userProfile;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity is { IsAuthenticated: true })
+        {
+            // This will get the existing profile or create a new one on the fly
+            _userProfile = await UserProfileService.GetOrCreateUserProfileAsync(user);
+        }
+    }
+
+    private async Task SaveChanges()
+    {
+        if (_userProfile is not null)
+        {
+            await UserProfileService.UpdateUserProfileAsync(_userProfile);
+            Snackbar.Add("Profile saved successfully!", Severity.Success);
+        }
+    }
+}

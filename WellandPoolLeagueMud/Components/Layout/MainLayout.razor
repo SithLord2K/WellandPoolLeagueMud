@@ -22,12 +22,22 @@
         <MudSpacer />
         @if (AppState.IsLoggedIn)
         {
-            <MudText Typo="Typo.subtitle1" Class="mr-2 user-name-text">Hello, @AppState.Username</MudText>
+            <MudText Typo="Typo.subtitle1">Hello, @AppState.Username</MudText>
+
+            @* For logged-in users, show a single dropdown menu *@
+            <MudMenu Icon="@Icons.Material.Filled.Person" Color="Color.Inherit" Dense="true" AnchorOrigin="Origin.BottomRight">
+                <MudMenuItem Href="/profile">My Profile</MudMenuItem>
+                <MudMenuItem>
+                    @* The LoginButton will show "Log Out" here *@
+                    <LoginButton />
+                </MudMenuItem>
+            </MudMenu>
         }
-        &nbsp;
-        <MudTooltip Text="Only League Admins need to log in." Placement="Placement.Bottom">
+        else
+        {
+            @* For logged-out users, show the Login button *@
             <LoginButton />
-        </MudTooltip>
+        }
     </MudAppBar>
     <MudDrawer id="nav-drawer" @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="6">
         <NavMenu />

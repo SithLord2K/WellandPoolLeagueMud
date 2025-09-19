@@ -13,21 +13,21 @@ namespace WellandPoolLeagueMud.Data
         public DbSet<Team> Teams { get; set; }
         public DbSet<PlayerGame> PlayerGames { get; set; }
         public DbSet<Schedule> Schedules { get; set; }
+        public DbSet<UserProfile> UserProfiles { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            // Configure table names
             modelBuilder.Entity<Player>().ToTable("WPLMud_Players");
             modelBuilder.Entity<Team>().ToTable("WPLMud_Teams");
             modelBuilder.Entity<PlayerGame>().ToTable("WPLMud_PlayerGames");
             modelBuilder.Entity<Schedule>().ToTable("WPLMud_Schedules");
+            modelBuilder.Entity<UserProfile>().ToTable("WPLMud_UserProfiles");
 
-            // Configure relationships
-            modelBuilder.Entity<Player>()
-                .HasOne(p => p.Team)
-                .WithMany()
+            modelBuilder.Entity<Team>()
+                .HasMany(t => t.Players)
+                .WithOne(p => p.Team)
                 .HasForeignKey(p => p.TeamId)
                 .OnDelete(DeleteBehavior.SetNull);
 
@@ -67,7 +67,6 @@ namespace WellandPoolLeagueMud.Data
                 .HasForeignKey(s => s.WinningTeamId)
                 .OnDelete(DeleteBehavior.SetNull);
 
-            // Configure indexes
             modelBuilder.Entity<Player>()
                 .HasIndex(p => new { p.FirstName, p.LastName });
 
@@ -80,6 +79,10 @@ namespace WellandPoolLeagueMud.Data
 
             modelBuilder.Entity<Schedule>()
                 .HasIndex(s => new { s.WeekNumber, s.GameDate });
+
+            modelBuilder.Entity<UserProfile>()
+                .HasIndex(p => p.Auth0UserId)
+                .IsUnique();
         }
     }
 }

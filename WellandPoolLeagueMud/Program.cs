@@ -18,6 +18,7 @@ builder.Services.AddScoped<ITeamService, TeamService>();
 builder.Services.AddScoped<IPlayerGameService, PlayerGameService>();
 builder.Services.AddScoped<IScheduleService, ScheduleService>();
 builder.Services.AddScoped<AppState>();
+builder.Services.AddScoped<IUserProfileService, UserProfileService>();
 
 builder.Services.AddDbContextFactory<WellandPoolLeagueDbContext>(options =>
 {
@@ -36,8 +37,6 @@ builder.Services.AddAuth0WebAppAuthentication(options =>
 //AntiForgery
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<AntiForgery>();
-
-builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<AuthenticationStateProvider, PersistingRevalidatingAuthenticationStateProvider>();
 
 // Add MudBlazor services
