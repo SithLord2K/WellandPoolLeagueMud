@@ -1,0 +1,246 @@
+﻿@page "/admin/user-roles"
+@attribute [Authorize(Roles = "Super_User")]
+@using WellandPoolLeagueMud.ViewModels
+@using WellandPoolLeagueMud.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@inject IAuth0ManagementService Auth0ManagementService
+@inject ISnackbar Snackbar
+@inject ILogger<UserRoles> Logger
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>User Role Management</PageTitle>
+
+<MudText Typo="Typo.h4" GutterBottom="true">Manage User Roles</MudText>
+<MudText Class="mb-4">Use this page to assign roles to users. Changes are saved to Auth0 immediately.</MudText>
+
+@if (_isLoading)
+{
+    <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+    <MudText Class="mt-2">Loading users and roles...</MudText>
+}
+else if (_hasError)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">
+        <strong>Error Loading Data:</strong> @_errorMessage
+        <MudButton Color="Color.Primary" Variant="Variant.Text" Size="Size.Small"
+                   OnClick="RefreshData" Class="ml-2">
+            Retry
+        </MudButton>
+    </MudAlert>
+}
+else if (_users is not null && _allRoles is not null)
+{
+    <MudPaper Class="pa-4" Elevation="3">
+        <div class="d-flex justify-space-between align-center mb-4">
+            <MudText Typo="Typo.h6">Users and Roles (@_users.Count users)</MudText>
+            <MudButton Color="Color.Primary" Variant="Variant.Outlined"
+                       OnClick="RefreshData" StartIcon="@Icons.Material.Filled.Refresh">
+                Refresh
+            </MudButton>
+        </div>
+
+        <MudTable Items="@_users" Hover="true" Bordered="true" Striped="true">
+            <HeaderContent>
+                <MudTh>User Email</MudTh>
+                <MudTh>Assigned Roles</MudTh>
+                <MudTh Style="width: 150px; text-align:center;">Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="User">
+                    <div class="d-flex align-center">
+                        <div>
+                            <MudText>@context.Email</MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                @context.UserId
+                            </MudText>
+                        </div>
+                        @if (IsCurrentUser(context))
+                        {
+                            <MudChip T="string" Color="Color.Primary" Size="Size.Small" Class="ml-2" Icon="@Icons.Material.Filled.Person">
+                                You
+                            </MudChip>
+                        }
+                    </div>
+                </MudTd>
+                <MudTd DataLabel="Roles">
+                    <MudSelect T="string"
+                               Label="Roles"
+                               MultiSelection="true"
+                               @bind-SelectedValues="context.Roles"
+                               Variant="Variant.Outlined"
+                               Dense="true"
+                               ToStringFunc="GetRoleName"
+                               Disabled="_isSaving">
+                        @foreach (var role in _allRoles)
+                        {
+                            <MudSelectItem T="string" Value="@role.Id">@role.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudTd>
+                <MudTd Style="text-align:center">
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Size="Size.Small"
+                               OnClick="@(() => SaveUserRoles(context))"
+                               Disabled="_isSaving"
+                               StartIcon="@(_isSaving ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Save)">
+                        @if (_isSaving && _currentSavingUserId == context.UserId)
+                        {
+                            <text>Saving...</text>
+                        }
+                        else
+                        {
+                            <text>Save</text>
+                        }
+                    </MudButton>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudPaper>
+}
+else
+{
+    <MudAlert Severity="Severity.Info">
+        No data available. Please refresh the page or contact support if this issue persists.
+    </MudAlert>
+}
+
+@code {
+    private List<UserViewModel>? _users;
+    private List<RoleViewModel>? _allRoles;
+    private bool _isLoading = true;
+    private bool _hasError = false;
+    private string _errorMessage = string.Empty;
+    private bool _isSaving = false;
+    private string _currentSavingUserId = string.Empty;
+    private string? _currentUserEmail;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GetCurrentUser();
+        await LoadData();
+    }
+
+    private async Task GetCurrentUser()
+    {
+        try
+        {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            // Try different claim types that Auth0 might use
+            _currentUserEmail = user?.FindFirst("https://wpl.codersden.com/email")?.Value
+                ?? user?.FindFirst(ClaimTypes.Email)?.Value
+                ?? user?.FindFirst("email")?.Value
+                ?? user?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress")?.Value
+                ?? user?.FindFirst("https://schemas.auth0.com/email")?.Value
+                ?? user?.FindFirst(ClaimTypes.Name)?.Value
+                ?? user?.FindFirst("name")?.Value;
+
+            Logger.LogInformation("Current user email: {Email}", _currentUserEmail);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to get current user information");
+        }
+    }
+
+    private async Task LoadData()
+    {
+        _isLoading = true;
+        _hasError = false;
+        _errorMessage = string.Empty;
+
+        try
+        {
+            Logger.LogInformation("Loading users and roles for user management page");
+
+            // Load users and roles concurrently for better performance
+            var usersTask = Auth0ManagementService.GetUsersAsync();
+            var rolesTask = Auth0ManagementService.GetRolesAsync();
+
+            await Task.WhenAll(usersTask, rolesTask);
+
+            _users = (await usersTask)?.ToList();
+            _allRoles = (await rolesTask)?.ToList();
+
+            if (_users == null || _allRoles == null)
+            {
+                throw new InvalidOperationException("Failed to load users or roles - received null response");
+            }
+
+            Logger.LogInformation("Successfully loaded {UserCount} users and {RoleCount} roles",
+                _users.Count, _allRoles.Count);
+
+            Snackbar.Add($"Loaded {_users.Count} users and {_allRoles.Count} roles", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading users and roles");
+            _hasError = true;
+            _errorMessage = ex.Message;
+            Snackbar.Add($"Error loading data: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RefreshData()
+    {
+        await LoadData();
+    }
+
+    private async Task SaveUserRoles(UserViewModel user)
+    {
+        if (_isSaving)
+        {
+            return; // Prevent multiple simultaneous saves
+        }
+
+        _isSaving = true;
+        _currentSavingUserId = user.UserId;
+
+        try
+        {
+            Logger.LogInformation("Saving roles for user {UserId}: {Roles}",
+                user.UserId, string.Join(", ", user.Roles));
+
+            await Auth0ManagementService.AssignRolesToUserAsync(user.UserId, user.Roles.ToList());
+
+            Logger.LogInformation("Successfully saved roles for user {UserId}", user.UserId);
+            Snackbar.Add($"Roles for {user.Email} updated successfully!", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving roles for user {UserId}", user.UserId);
+            Snackbar.Add($"Error saving roles for {user.Email}: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+            _currentSavingUserId = string.Empty;
+            StateHasChanged();
+        }
+    }
+
+    private string GetRoleName(string roleId)
+    {
+        if (string.IsNullOrEmpty(roleId))
+            return string.Empty;
+
+        var role = _allRoles?.FirstOrDefault(r => r.Id == roleId);
+        return role?.Name ?? $"Unknown Role ({roleId})";
+    }
+
+    private bool IsCurrentUser(UserViewModel user)
+    {
+        if (string.IsNullOrEmpty(_currentUserEmail) || string.IsNullOrEmpty(user.Email))
+            return false;
+
+        return string.Equals(_currentUserEmail, user.Email, StringComparison.OrdinalIgnoreCase);
+    }
+}

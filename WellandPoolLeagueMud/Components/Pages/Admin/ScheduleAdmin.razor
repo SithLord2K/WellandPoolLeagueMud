@@ -155,8 +155,7 @@
                             <MudItem xs="12" sm="6">
                                 <MudCheckBox @bind-Value="schedule.IsComplete"
                                              Label="Mark as Complete"
-                                             Color="Color.Success"
-                                             HelperText="Check if game has been played" />
+                                             Color="Color.Success"/>
                             </MudItem>
 
                             <MudItem xs="12" Class="d-flex justify-start gap-4 mt-4">
@@ -285,8 +284,7 @@
                                 <MudIconButton Icon="@Icons.Material.Filled.Edit"
                                                Color="Color.Primary"
                                                Size="Size.Small"
-                                               OnClick="@(() => LoadSchedule(context.ScheduleId))"
-                                               Title="Edit Schedule" />
+                                               OnClick="@(() => LoadSchedule(context.ScheduleId))">Edit Schedule</MudIconButton>
                             </MudTd>
                         </RowTemplate>
                         <NoRecordsContent>

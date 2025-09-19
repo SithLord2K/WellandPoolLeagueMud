@@ -1,43 +1,44 @@
-﻿using WellandPoolLeagueMud.ViewModels; // Make sure this using statement matches your shared project
+﻿using Microsoft.AspNetCore.Components;
+using System.Net.Http.Json;
+using WellandPoolLeagueMud.ViewModels;
 
-namespace WellandPoolLeagueMud.Clients
+namespace WellandPoolLeagueMud.Clients;
+
+public class UserManagementClient
 {
+    private readonly HttpClient _httpClient;
+    private readonly NavigationManager _navigationManager;
 
-    public class UserManagementClient
+    public UserManagementClient(HttpClient httpClient, NavigationManager navigationManager)
     {
-        private readonly HttpClient _httpClient;
+        _httpClient = httpClient;
+        _navigationManager = navigationManager;
+    }
 
-        // The configured HttpClient is injected here by the dependency injection container
-        public UserManagementClient(HttpClient httpClient)
+    private void EnsureBaseAddress()
+    {
+        if (_httpClient.BaseAddress == null)
         {
-            _httpClient = httpClient;
+            _httpClient.BaseAddress = new Uri(_navigationManager.BaseUri);
         }
+    }
 
-        /// <summary>
-        /// Calls the backend API to get a list of all users.
-        /// </summary>
-        public async Task<List<UserViewModel>?> GetUsersAsync()
-        {
-            return await _httpClient.GetFromJsonAsync<List<UserViewModel>>("api/usermanagement/users");
-        }
+    public async Task<List<UserViewModel>?> GetUsersAsync()
+    {
+        EnsureBaseAddress();
+        return await _httpClient.GetFromJsonAsync<List<UserViewModel>>("api/usermanagement/users");
+    }
 
-        /// <summary>
-        /// Calls the backend API to get a list of all available roles.
-        /// </summary>
-        public async Task<List<RoleViewModel>?> GetRolesAsync()
-        {
-            return await _httpClient.GetFromJsonAsync<List<RoleViewModel>>("api/usermanagement/roles");
-        }
+    public async Task<List<RoleViewModel>?> GetRolesAsync()
+    {
+        EnsureBaseAddress();
+        return await _httpClient.GetFromJsonAsync<List<RoleViewModel>>("api/usermanagement/roles");
+    }
 
-        /// <summary>
-        /// Calls the backend API to assign a list of roles to a specific user.
-        /// </summary>
-        public async Task AssignRolesToUserAsync(string userId, List<string> roleIds)
-        {
-            var response = await _httpClient.PostAsJsonAsync($"api/usermanagement/users/{userId}/roles", roleIds);
-
-            // This will throw an exception if the API returns an error (e.g., 401 Unauthorized)
-            response.EnsureSuccessStatusCode();
-        }
+    public async Task AssignRolesToUserAsync(string userId, List<string> roleIds)
+    {
+        EnsureBaseAddress();
+        var response = await _httpClient.PostAsJsonAsync($"api/usermanagement/users/{userId}/roles", roleIds);
+        response.EnsureSuccessStatusCode();
     }
 }

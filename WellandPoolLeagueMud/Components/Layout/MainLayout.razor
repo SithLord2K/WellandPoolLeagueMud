@@ -22,7 +22,7 @@
         <MudSpacer />
         @if (AppState.IsLoggedIn)
         {
-            <MudText Typo="Typo.subtitle1">Hello, @AppState.Username</MudText>
+            <MudText Typo="Typo.subtitle1">Hello, @AppState.Username (@AppState.Roles)</MudText>
 
             @* For logged-in users, show a single dropdown menu *@
             <MudMenu Icon="@Icons.Material.Filled.Person" Color="Color.Inherit" Dense="true" AnchorOrigin="Origin.BottomRight">
