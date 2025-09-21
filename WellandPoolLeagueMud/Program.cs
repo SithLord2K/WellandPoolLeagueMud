@@ -1,4 +1,3 @@
-using Serilog;
 using Auth0.AspNetCore.Authentication;
 using Auth0.AuthenticationApi;
 using Auth0.AuthenticationApi.Models;
@@ -6,29 +5,35 @@ using Auth0.ManagementApi;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor.Services;
-using WellandPoolLeagueMud.Handlers;
+using QuestPDF.Fluent;
+using QuestPDF.Infrastructure;
+using Serilog;
 using WellandPoolLeagueMud.AuthenticationStateSyncer.PersistingRevalidatingAuthenticationStateProvider;
 using WellandPoolLeagueMud.Clients;
 using WellandPoolLeagueMud.Components;
 using WellandPoolLeagueMud.Data;
 using WellandPoolLeagueMud.Data.Services;
+using WellandPoolLeagueMud.Handlers;
+using WellandPoolLeagueMud.Reports;
 using WellandPoolLeagueMud.Services;
-using Microsoft.AspNetCore.DataProtection;
 
-// --- 1. Configure Serilog Bootstrap Logger ---
+// --- Configure Serilog Bootstrap Logger ---
 Log.Logger = new LoggerConfiguration()
     .Enrich.FromLogContext()
     .WriteTo.Console()
     .CreateBootstrapLogger();
+
+QuestPDF.Settings.License = LicenseType.Community;
 
 try
 {
     Log.Information("Starting up the application");
     var builder = WebApplication.CreateBuilder(args);
 
-    // --- 2. Add Serilog to the Host Builder ---
+    // --- Add Serilog to the Host Builder ---
     builder.Host.UseSerilog((context, services, configuration) => configuration
         .ReadFrom.Configuration(context.Configuration)
         .ReadFrom.Services(services)
@@ -161,8 +166,52 @@ try
         app.UseSwaggerUI();
     }
 
+    var reportsApi = app.MapGroup("api/reports")
+                    .RequireAuthorization();
+
+    reportsApi.MapGet("teamstandings", async (ITeamService teamService, IWebHostEnvironment env) =>
+    {
+        // Get the path to the logo file
+        var logoPath = Path.Combine(env.WebRootPath, "images", "appicon.png");
+        byte[] logoData = await File.ReadAllBytesAsync(logoPath);
+
+        var standings = await teamService.GetTeamStandingsAsync();
+
+        // Pass the logo data to the report's constructor
+        var report = new TeamStandingsReport(standings, logoData);
+
+        byte[] pdfBytes = report.GeneratePdf();
+        return Results.File(pdfBytes, "application/pdf", "TeamStandingsReport.pdf");
+    });
+
+    reportsApi.MapGet("weeklyresults/{weekNumber:int}", async (int weekNumber, IScheduleService scheduleService, IWebHostEnvironment env) =>
+    {
+        var logoPath = Path.Combine(env.WebRootPath, "images", "appicon.png");
+        byte[] logoData = await File.ReadAllBytesAsync(logoPath);
+
+        var results = await scheduleService.GetSchedulesByWeekAsync(weekNumber);
+
+        // Pass the logo data to the report's constructor
+        var report = new WeeklyResultsReport(results, weekNumber, logoData);
+
+        byte[] pdfBytes = report.GeneratePdf();
+        return Results.File(pdfBytes, "application/pdf", $"Week_{weekNumber}_Results.pdf");
+    });
+
+    reportsApi.MapGet("playerstandings", async (IPlayerService playerService, IWebHostEnvironment env) =>
+    {
+        var logoPath = Path.Combine(env.WebRootPath, "images", "appicon.png");
+        byte[] logoData = await File.ReadAllBytesAsync(logoPath);
+
+        var standings = await playerService.GetPlayerStandingsAsync();
+        var report = new PlayerStandingsReport(standings, logoData);
+
+        byte[] pdfBytes = report.GeneratePdf();
+        return Results.File(pdfBytes, "application/pdf", "PlayerStandingsReport.pdf");
+    });
+
     var api = app.MapGroup("api/usermanagement")
-                 .RequireAuthorization("Super_User");
+             .RequireAuthorization("Super_User");
 
     api.MapGet("users", async (IAuth0ManagementService service) =>
     {

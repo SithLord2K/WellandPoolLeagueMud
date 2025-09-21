@@ -1,0 +1,106 @@
+﻿@using System.ComponentModel.DataAnnotations
+@using Auth0.ManagementApi.Models
+@using WellandPoolLeagueMud.Services
+@using WellandPoolLeagueMud.ViewModels
+@using MudBlazor
+
+@inject IAuth0ManagementService Auth0ManagementService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@_title</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_isFormValid" Class="mt-4">
+            <MudTextField @bind-Value="_model.Name" Label="Role Name" Required="true" RequiredError="Role Name is required." />
+            <MudTextField @bind-Value="_model.Description" Label="Description" Lines="3" />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="!_isFormValid || _isSaving">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                <MudText Class="ms-2">Saving...</MudText>
+            }
+            else
+            {
+                <text>Save</text>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public RoleViewModel? Role { get; set; }
+
+    private string _title = "Add New Role";
+    private bool _isEditMode => Role != null;
+
+    private MudForm _form = default!;
+    private bool _isFormValid;
+    private bool _isSaving;
+    private RoleModel _model = new();
+
+    protected override void OnInitialized()
+    {
+        if (_isEditMode)
+        {
+            _title = $"Edit Role: {Role!.Name}";
+            _model.Name = Role.Name;
+            _model.Description = Role.Description;
+        }
+    }
+
+    private async Task Submit()
+    {
+        await _form.Validate();
+        if (!_isFormValid) return;
+
+        _isSaving = true;
+        try
+        {
+            if (_isEditMode)
+            {
+                var request = new RoleUpdateRequest
+                {
+                    Name = _model.Name!,
+                    Description = _model.Description!
+                };
+                await Auth0ManagementService.UpdateRoleAsync(Role!.Id!, request);
+                Snackbar.Add("Role updated successfully!", Severity.Success);
+            }
+            else
+            {
+                var request = new RoleCreateRequest
+                {
+                    Name = _model.Name!,
+                    Description = _model.Description!
+                };
+                await Auth0ManagementService.CreateRoleAsync(request);
+                Snackbar.Add("Role created successfully!", Severity.Success);
+            }
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving role: {ex.Message}", Severity.Error, config => config.RequireInteraction = true);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    void Cancel() => MudDialog.Cancel();
+
+    private class RoleModel
+    {
+        [Required]
+        public string? Name { get; set; }
+        public string? Description { get; set; }
+    }
+}

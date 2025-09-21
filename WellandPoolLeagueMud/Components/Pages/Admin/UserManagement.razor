@@ -1,0 +1,262 @@
+﻿@page "/admin/user-management"
+@attribute [Authorize(Roles = "Super_User")]
+
+@using WellandPoolLeagueMud.Dialogs
+@using WellandPoolLeagueMud.ViewModels
+@using WellandPoolLeagueMud.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@using Auth0.ManagementApi.Models
+
+@inject IAuth0ManagementService Auth0ManagementService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject ILogger<UserManagement> Logger
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>User Management</PageTitle>
+
+<MudText Typo="Typo.h4" GutterBottom="true">User Management</MudText>
+<MudText Class="mb-4">Create, delete, block, and assign roles to users. Changes are saved to Auth0 immediately.</MudText>
+
+@if (_isLoading)
+{
+    <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+    <MudText Class="mt-2">Loading users and roles...</MudText>
+}
+else if (_hasError)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">
+        <strong>Error Loading Data:</strong> @_errorMessage
+        <MudButton Color="Color.Primary" Variant="Variant.Text" Size="Size.Small" OnClick="RefreshData" Class="ml-2">
+            Retry
+        </MudButton>
+    </MudAlert>
+}
+else if (_users is not null && _allRoles is not null)
+{
+    <MudPaper Class="pa-4" Elevation="3">
+        <div class="d-flex justify-space-between align-center mb-4">
+            <MudText Typo="Typo.h6">Users (@_users.Count)</MudText>
+            <div>
+                <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="OpenAddUserDialog" StartIcon="@Icons.Material.Filled.Add" Class="mr-2">
+                    Add User
+                </MudButton>
+                <MudButton Color="Color.Primary" Variant="Variant.Outlined" OnClick="RefreshData" StartIcon="@Icons.Material.Filled.Refresh">
+                    Refresh
+                </MudButton>
+            </div>
+        </div>
+
+        <MudTable Items="@_users" Hover="true" Bordered="true" Striped="true" T="UserViewModel">
+            <HeaderContent>
+                <MudTh>User</MudTh>
+                <MudTh>Assigned Roles</MudTh>
+                <MudTh Style="width: 250px;">Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="User">
+                    <div class="d-flex align-center">
+                        <div>
+                            <MudText>@context.Email</MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                ID: @context.UserId
+                            </MudText>
+                        </div>
+                        @if (IsCurrentUser(context))
+                        {
+                            <MudChip T="string" Color="Color.Primary" Size="Size.Small" Class="ml-2" Icon="@Icons.Material.Filled.Person">You</MudChip>
+                        }
+                        @if (context.IsBlocked)
+                        {
+                            <MudChip T="string" Color="Color.Error" Size="Size.Small" Class="ml-2" Icon="@Icons.Material.Filled.Block">Blocked</MudChip>
+                        }
+                    </div>
+                </MudTd>
+                <MudTd DataLabel="Roles">
+                    <MudSelect T="string"
+                               Label="Roles"
+                               MultiSelection="true"
+                               @bind-SelectedValues="context.Roles"
+                               Variant="Variant.Outlined"
+                               Dense="true"
+                               ToStringFunc="GetRoleName"
+                               Disabled="_isSaving || IsCurrentUser(context)">
+                        @foreach (var role in _allRoles)
+                        {
+                            <MudSelectItem T="string" Value="@role.Id">@role.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudTd>
+                <MudTd>
+                    <div class="d-flex">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   Size="Size.Small"
+                                   OnClick="@(() => SaveUserRoles(context))"
+                                   Disabled="@(_isSaving || IsCurrentUser(context))"
+                                   StartIcon="@(_isSaving && _currentSavingUserId == context.UserId ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Save)">
+                            @if (_isSaving && _currentSavingUserId == context.UserId)
+                            {
+                                <text>Saving...</text>
+                            }
+                            else
+                            {
+                                <text>Save Roles</text>
+                            }
+                        </MudButton>
+                        <MudMenu Icon="@Icons.Material.Filled.MoreVert" Dense="true" Class="ml-2">
+                            <MudMenuItem OnClick="@(() => BlockUnblockUser(context, !context.IsBlocked))">
+                                @(context.IsBlocked ? "Unblock" : "Block")
+                            </MudMenuItem>
+                            <MudMenuItem OnClick="@(() => DeleteUser(context))" Disabled="IsCurrentUser(context)">Delete</MudMenuItem>
+                        </MudMenu>
+                    </div>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudPaper>
+}
+
+@code {
+    private List<UserViewModel>? _users;
+    private List<RoleViewModel>? _allRoles;
+    private bool _isLoading = true;
+    private bool _hasError = false;
+    private string _errorMessage = string.Empty;
+    private bool _isSaving = false;
+    private string _currentSavingUserId = string.Empty;
+    private string? _currentAuth0UserId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GetCurrentUserId();
+        await LoadData();
+    }
+
+    private async Task GetCurrentUserId()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        _currentAuth0UserId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        Logger.LogInformation("Current user Auth0 ID: {UserId}", _currentAuth0UserId);
+    }
+
+    private async Task LoadData()
+    {
+        _isLoading = true;
+        _hasError = false;
+        try
+        {
+            var usersTask = Auth0ManagementService.GetUsersAsync();
+            var rolesTask = Auth0ManagementService.GetRolesAsync();
+            await Task.WhenAll(usersTask, rolesTask);
+            _users = (await usersTask)?.ToList();
+            _allRoles = (await rolesTask)?.ToList();
+
+            if (_users == null || _allRoles == null)
+            {
+                throw new InvalidOperationException("Failed to load users or roles.");
+            }
+            //Snackbar.Add($"Loaded {_users.Count} users and {_allRoles.Count} roles.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading users and roles");
+            _hasError = true;
+            _errorMessage = ex.Message;
+            Snackbar.Add($"Error loading data: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task RefreshData() => await LoadData();
+
+    private async Task SaveUserRoles(UserViewModel user)
+    {
+        _isSaving = true;
+        _currentSavingUserId = user.UserId!;
+        try
+        {
+            await Auth0ManagementService.AssignRolesToUserAsync(user.UserId!, user.Roles.ToList());
+            Snackbar.Add($"Roles for {user.Email} updated.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving roles for user {UserId}", user.UserId);
+            Snackbar.Add($"Error saving roles: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+            _currentSavingUserId = string.Empty;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OpenAddUserDialog()
+    {
+        var parameters = new DialogParameters { ["AllRoles"] = _allRoles };
+        var dialog = await DialogService.ShowAsync<AddUserDialog>("Create New User", parameters);
+        var result = dialog.Result;
+
+        if (!result.IsCanceled)
+        {
+            await RefreshData();
+        }
+    }
+
+    private async Task DeleteUser(UserViewModel user)
+    {
+        var parameters = new DialogParameters
+        {
+            ["Message"] = $"Are you sure you want to delete the user '{user.Email}'? This action cannot be undone.",
+            ["YesText"] = "Delete",
+            ["NoText"] = "Cancel",
+            ["Color"] = Color.Error
+        };
+
+        // Use ShowAsync instead of obsolete Show
+        var dialog = await DialogService.ShowAsync<MudMessageBox>("Confirm Deletion", parameters);
+        var result = dialog.Result;
+
+        if (result.IsCanceled == false && bool.TryParse(result.Result?.ToString(), out var confirmed) && confirmed)
+        {
+            try
+            {
+                await Auth0ManagementService.DeleteUserAsync(user.UserId!);
+                _users?.Remove(user);
+                Snackbar.Add($"User {user.Email} deleted successfully.", Severity.Success);
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Failed to delete user {UserId}", user.UserId);
+                Snackbar.Add($"Error deleting user: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task BlockUnblockUser(UserViewModel user, bool block)
+    {
+        var action = block ? "block" : "unblock";
+        try
+        {
+            await Auth0ManagementService.UpdateUserBlockAsync(user.UserId!, block);
+            user.IsBlocked = block;
+            Snackbar.Add($"User {user.Email} has been {action}ed.", Severity.Success);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to {Action} user {UserId}", action, user.UserId);
+            Snackbar.Add($"Error {action}ing user: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private string GetRoleName(string roleId) => _allRoles?.FirstOrDefault(r => r.Id == roleId)?.Name ?? "Unknown";
+
+    private bool IsCurrentUser(UserViewModel user) => string.Equals(user.UserId, _currentAuth0UserId, StringComparison.OrdinalIgnoreCase);
+}

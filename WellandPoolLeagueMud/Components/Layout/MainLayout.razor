@@ -20,9 +20,22 @@
         </MudAvatar>
         <MudText Typo="Typo.h5" Class="ml-3 league-name-text">Welland Pool League</MudText>
         <MudSpacer />
-        @if (AppState.IsLoggedIn)
+        @if (AppState.IsLoggedIn && AppState.Roles != null)
         {
             <MudText Typo="Typo.subtitle1">Hello, @AppState.Username (@AppState.Roles)</MudText>
+
+            @* For logged-in users, show a single dropdown menu *@
+            <MudMenu Icon="@Icons.Material.Filled.Person" Color="Color.Inherit" Dense="true" AnchorOrigin="Origin.BottomRight">
+                <MudMenuItem Href="/profile">My Profile</MudMenuItem>
+                <MudMenuItem>
+                    @* The LoginButton will show "Log Out" here *@
+                    <LoginButton />
+                </MudMenuItem>
+            </MudMenu>
+        }
+        else if (AppState.IsLoggedIn && AppState.Roles == null)
+        {
+            <MudText Typo="Typo.subtitle1">Hello, @AppState.Username (No Role)</MudText>
 
             @* For logged-in users, show a single dropdown menu *@
             <MudMenu Icon="@Icons.Material.Filled.Person" Color="Color.Inherit" Dense="true" AnchorOrigin="Origin.BottomRight">
@@ -56,6 +69,15 @@
         </MudPaper>
     </MudMainContent>
     <MudAppBar Bottom="true" Elevation="6" Dense="true">
+        <MudSpacer />
+        <MudButton Href="https://www.buymeacoffee.com/wileysoftware"
+                   Target="_blank"
+                   Variant="Variant.Text"
+                   Color="Color.Inherit"
+                   StartIcon="@Icons.Material.Filled.LocalDrink"
+                   Style="text-transform:none;">
+            Like the work? Buy Me a Beer!
+        </MudButton>
         <MudSpacer />
         <MudText Typo="Typo.caption" Class="text-center">
             &copy; @DateTime.Now.Year Welland Pool League

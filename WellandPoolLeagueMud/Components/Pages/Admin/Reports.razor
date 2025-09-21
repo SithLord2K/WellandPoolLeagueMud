@@ -1,0 +1,70 @@
+﻿@page "/admin/reports"
+@attribute [Authorize(Roles = "Super_User")]
+
+<PageTitle>Generate Reports</PageTitle>
+
+<MudPaper Class="pa-4" Elevation="3">
+    <MudText Typo="Typo.h5" GutterBottom="true">Report Generator</MudText>
+    <MudGrid Spacing="4">
+        <MudItem xs="12" md="6">
+            <MudSelect @bind-Value="_selectedReportType" Label="Select Report Type" Variant="Variant.Outlined">
+                <MudSelectItem Value="@("Select Report Type")" Disabled>Select Report Type</MudSelectItem>
+                <MudSelectItem Value="@("OverallTeamStandings")">Overall Team Standings</MudSelectItem>
+                <MudSelectItem Value="@("PlayerStandings")">Overall Player Standings</MudSelectItem>
+                <MudSelectItem Value="@("WeeklyResults")">Weekly Match Results</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+
+        @if (IsWeekNumberRequired)
+        {
+            <MudItem xs="12" md="6">
+                <MudNumericField @bind-Value="_weekNumber" Label="Enter Week Number" Variant="Variant.Outlined" Min="1" />
+            </MudItem>
+        }
+
+        <MudItem xs="12">
+            <MudButton Href="@DownloadUrl"
+                       Target="_blank"
+                       Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       Disabled="@(!IsReadyToDownload)"
+                       StartIcon="@Icons.Material.Filled.Download">
+                Generate and Download
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@code {
+    private string _selectedReportType = "Select Report Type";
+    private int? _weekNumber = 1;
+
+    private bool IsWeekNumberRequired => _selectedReportType == "WeeklyResults";
+
+    private bool IsReadyToDownload
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(_selectedReportType))
+                return false;
+            if (IsWeekNumberRequired && _weekNumber is null)
+                return false;
+            return true;
+        }
+    }
+
+    private string DownloadUrl
+    {
+        get
+        {
+            return _selectedReportType switch
+            {
+                "Select Report Type" => string.Empty,
+                "OverallTeamStandings" => "/api/reports/teamstandings",
+                "PlayerStandings" => "/api/reports/playerstandings",
+                "WeeklyResults" => $"/api/reports/weeklyresults/{_weekNumber}",
+                _ => string.Empty
+            };
+        }
+    }
+}

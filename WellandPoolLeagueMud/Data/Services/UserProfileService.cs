@@ -33,13 +33,10 @@ public class UserProfileService : IUserProfileService
 
         if (userProfile == null)
         {
-            // --- NAME SPLITTING LOGIC IS HERE ---
 
-            // 1. (Best Method) Try to get specific claims from Auth0 first.
             var firstName = user.FindFirstValue("given_name");
             var lastName = user.FindFirstValue("family_name");
 
-            // 2. (Fallback Method) If claims are missing, parse the full name.
             if (string.IsNullOrWhiteSpace(firstName) && string.IsNullOrWhiteSpace(lastName))
             {
                 var fullName = user.Identity?.Name;

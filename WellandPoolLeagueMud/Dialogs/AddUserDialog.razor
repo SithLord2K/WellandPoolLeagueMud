@@ -1,0 +1,97 @@
+﻿@using System.ComponentModel.DataAnnotations
+@using Auth0.ManagementApi.Models
+@using WellandPoolLeagueMud.Services
+@using WellandPoolLeagueMud.ViewModels
+@using MudBlazor
+
+@inject IAuth0ManagementService Auth0ManagementService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Create New User</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_isFormValid">
+            <MudTextField @bind-Value="_model.Email" Label="Email" Required="true" RequiredError="Email is required." Validation="@(new EmailAddressAttribute())" />
+            <MudTextField @bind-Value="_model.Password" Label="Password" Required="true" RequiredError="Password is required." InputType="InputType.Password" />
+            <MudSelect T="string" @bind-SelectedValues="_model.Roles" Label="Assign Roles" MultiSelection="true">
+                @foreach (var role in AllRoles)
+                {
+                    <MudSelectItem T="string" Value="@role.Id">@role.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="!_isFormValid || _isSaving">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                <MudText Class="ms-2">Creating...</MudText>
+            }
+            else
+            {
+                <text>Create User</text>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public List<RoleViewModel> AllRoles { get; set; } = new();
+
+    private MudForm _form = default!;
+    private bool _isFormValid;
+    private bool _isSaving;
+    private AddUserModel _model = new();
+
+    private async Task Submit()
+    {
+        await _form.Validate();
+        if (!_isFormValid) return;
+
+        _isSaving = true;
+        try
+        {
+            var request = new UserCreateRequest
+            {
+                Email = _model.Email,
+                Password = _model.Password,
+                Connection = "Username-Password-Authentication", // IMPORTANT: Use your database connection name
+                EmailVerified = true,
+            };
+
+            var createdUser = await Auth0ManagementService.CreateUserAsync(request);
+
+            if (createdUser != null && _model.Roles.Any())
+            {
+                await Auth0ManagementService.AssignRolesToUserAsync(createdUser.UserId, _model.Roles.ToList());
+            }
+
+            Snackbar.Add("User created successfully!", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error creating user: {ex.Message}", Severity.Error, config => { config.RequireInteraction = true; });
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    void Cancel() => MudDialog.Cancel();
+
+    private class AddUserModel
+    {
+        [Required, EmailAddress]
+        public string Email { get; set; } = string.Empty;
+        [Required]
+        public string Password { get; set; } = string.Empty;
+        public IEnumerable<string> Roles { get; set; } = new List<string>();
+    }
+}

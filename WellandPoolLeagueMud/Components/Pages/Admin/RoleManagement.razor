@@ -1,0 +1,135 @@
+﻿@page "/admin/role-management"
+@attribute [Authorize(Roles = "Super_User")]
+
+@using WellandPoolLeagueMud.Dialogs
+@using WellandPoolLeagueMud.ViewModels
+@using WellandPoolLeagueMud.Services
+
+@inject IAuth0ManagementService Auth0ManagementService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ILogger<RoleManagement> Logger
+
+<PageTitle>Role Management</PageTitle>
+
+<MudText Typo="Typo.h4" GutterBottom="true">Role Management</MudText>
+<MudText Class="mb-4">Use this page to create, edit, and delete roles in Auth0.</MudText>
+
+@if (_isLoading)
+{
+    <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+}
+else
+{
+    <MudPaper Class="pa-4" Elevation="3">
+        <div class="d-flex justify-space-between align-center mb-4">
+            <MudText Typo="Typo.h6">Roles (@_roles.Count)</MudText>
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="OpenAddRoleDialog" StartIcon="@Icons.Material.Filled.Add">
+                Add Role
+            </MudButton>
+        </div>
+
+        <MudTable Items="@_roles" Hover="true" Bordered="true" Striped="true" T="RoleViewModel">
+            <HeaderContent>
+                <MudTh>Name</MudTh>
+                <MudTh>Description</MudTh>
+                <MudTh Style="width: 150px; text-align:right;">Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Name">@context.Name</MudTd>
+                <MudTd DataLabel="Description">@context.Description</MudTd>
+                <MudTd DataLabel="Actions" Style="text-align:right;">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="@(() => OpenEditRoleDialog(context))" Class="mr-2" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Variant="Variant.Filled" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteRole(context))" />
+                </MudTd>
+            </RowTemplate>
+            <NoRecordsContent>
+                @* <-- FIXED: Correct tag name *@
+                <MudText>No roles found.</MudText>
+            </NoRecordsContent>
+        </MudTable>
+    </MudPaper>
+}
+
+
+@code {
+    private List<RoleViewModel> _roles = new();
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRoles();
+    }
+
+    private async Task LoadRoles()
+    {
+        _isLoading = true;
+        try
+        {
+            var rolesResult = await Auth0ManagementService.GetRolesAsync();
+            _roles = rolesResult.ToList();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading roles: {ex.Message}", Severity.Error);
+            Logger.LogError(ex, "Failed to load roles.");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task OpenAddRoleDialog()
+    {
+        var dialog = await DialogService.ShowAsync<RoleEditDialog>("Add New Role");
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled)
+        {
+            await LoadRoles();
+        }
+    }
+
+    private async Task OpenEditRoleDialog(RoleViewModel role)
+    {
+        var parameters = new DialogParameters { ["Role"] = role };
+        var dialog = await DialogService.ShowAsync<RoleEditDialog>($"Edit Role: {role.Name}", parameters);
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled)
+        {
+            await LoadRoles();
+        }
+    }
+
+    private async Task DeleteRole(RoleViewModel role)
+    {
+        var parameters = new DialogParameters
+        {
+            ["Message"] = $"Are you sure you want to delete the role '{role.Name}'? This cannot be undone.",
+            ["YesText"] = "Delete",
+            ["NoText"] = "Cancel",
+            ["Color"] = Color.Error
+        };
+
+        var dialog = await DialogService.ShowAsync<MudMessageBox>("Confirm Deletion", parameters);
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled && bool.TryParse(result.Data?.ToString(), out var confirmed) && confirmed)
+        {
+            try
+            {
+                await Auth0ManagementService.DeleteRoleAsync(role.Id!);
+                _roles.Remove(role);
+                Snackbar.Add($"Role '{role.Name}' deleted.", Severity.Success);
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error deleting role: {ex.Message}", Severity.Error);
+                Logger.LogError(ex, "Failed to delete role {RoleId}", role.Id);
+            }
+        }
+    }
+}

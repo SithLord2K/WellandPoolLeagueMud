@@ -84,6 +84,7 @@
     <PackageReference Include="Microsoft.IdentityModel.Abstractions" Version="8.14.0" />
     <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="8.14.0" />
     <PackageReference Include="MudBlazor" Version="8.*" />
+    <PackageReference Include="QuestPDF" Version="2025.7.1" />
     <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.4" />
