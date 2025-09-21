@@ -1,17 +1,9 @@
-﻿using Auth0.ManagementApi;
-using Auth0.ManagementApi.Models;
+﻿using Auth0.ManagementApi.Models;
 using WellandPoolLeagueMud.Data.Services;
 using WellandPoolLeagueMud.ViewModels;
 
 namespace WellandPoolLeagueMud.Services
 {
-    public interface IAuth0ManagementService
-    {
-        Task<IEnumerable<UserViewModel>> GetUsersAsync();
-        Task<IEnumerable<RoleViewModel>> GetRolesAsync();
-        Task AssignRolesToUserAsync(string userId, List<string> roleIds);
-    }
-
     public class Auth0ManagementService : IAuth0ManagementService
     {
         private readonly IAuth0ManagementClientFactory _clientFactory;
