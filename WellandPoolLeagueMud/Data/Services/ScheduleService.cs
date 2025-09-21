@@ -204,7 +204,7 @@ namespace WellandPoolLeagueMud.Data.Services
                     AwayTeamName = s.AwayTeam.TeamName,
                     GameDate = s.GameDate,
                     WinningTeamId = s.WinningTeamId,
-                    WinningTeamName = s.WinningTeam.TeamName,
+                    WinningTeamName = s.WinningTeam!.TeamName,
                     IsComplete = s.IsComplete,
                     Notes = s.Notes
                 })

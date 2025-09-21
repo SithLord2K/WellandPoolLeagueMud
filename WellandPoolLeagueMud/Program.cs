@@ -78,7 +78,7 @@ try
         try
         {
             var token = tokenService.GetManagementApiTokenAsync().GetAwaiter().GetResult();
-            return new ManagementApiClient(token, domain);
+            return new ManagementApiClient(token, domain!);
         }
         catch (Exception ex)
         {

@@ -202,14 +202,14 @@ else
         }
 
         _isSaving = true;
-        _currentSavingUserId = user.UserId;
+        _currentSavingUserId = user.UserId!;
 
         try
         {
             Logger.LogInformation("Saving roles for user {UserId}: {Roles}",
                 user.UserId, string.Join(", ", user.Roles));
 
-            await Auth0ManagementService.AssignRolesToUserAsync(user.UserId, user.Roles.ToList());
+            await Auth0ManagementService.AssignRolesToUserAsync(user.UserId!, user.Roles.ToList());
 
             Logger.LogInformation("Successfully saved roles for user {UserId}", user.UserId);
             Snackbar.Add($"Roles for {user.Email} updated successfully!", Severity.Success);
