@@ -7,10 +7,10 @@ public class AppState
     public string? Username { get; private set; }
     public string? UserId { get; private set; }
     public string? Email { get; private set; }
-    public string? Roles { get; private set; }
-    public bool IsLoggedIn => !string.IsNullOrEmpty(Username);
+    public List<string> Roles { get; private set; } = new();
+    public DateTime? RegistrationDate { get; private set; }
+    public bool IsLoggedIn => !string.IsNullOrEmpty(UserId);
 
-    // Event to notify components that the state has changed
     public event Action? OnChange;
 
     public void SetUser(ClaimsPrincipal user)
@@ -19,15 +19,22 @@ public class AppState
         {
             Username = user.Identity.Name;
             UserId = user.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
-            Email = user.Claims.FirstOrDefault(c => c.Type == "https://wpl.codersden.com/email")?.Value;
-            Roles = user.Claims.FirstOrDefault(c => c.Type == "https://wpl.codersden.com/roles")?.Value;
+            Email = user.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+            Roles = user.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+
+            var registrationDateClaim = user.FindFirst("https://wpl.codersden.com/created_at")?.Value;
+            if (!string.IsNullOrEmpty(registrationDateClaim))
+            {
+                RegistrationDate = DateTime.Parse(registrationDateClaim, null, System.Globalization.DateTimeStyles.RoundtripKind);
+            }
         }
         else
         {
             Username = null;
             UserId = null;
             Email = null;
-            Roles = null;
+            Roles.Clear();
+            RegistrationDate = null;
         }
 
         NotifyStateChanged();

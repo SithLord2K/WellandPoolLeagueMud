@@ -1,5 +1,5 @@
 ﻿@page "/profile"
-@attribute [Authorize] // Ensures only logged-in users can access this page
+@attribute [Authorize]
 
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
@@ -8,6 +8,7 @@
 @inject IUserProfileService UserProfileService
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject ISnackbar Snackbar
+@inject NavigationManager NavigationManager
 
 <PageTitle>My Profile</PageTitle>
 
@@ -17,30 +18,94 @@
 }
 else
 {
-    <MudCard Elevation="3">
-        <MudCardHeader>
-            <CardHeaderContent>
-                <MudText Typo="Typo.h5">@_userProfile.FirstName's Profile</MudText>
-            </CardHeaderContent>
-        </MudCardHeader>
-        <MudCardContent>
-            <MudGrid>
-                <MudItem xs="12" sm="6">
-                    <MudTextField @bind-Value="_userProfile.FirstName" Label="First Name" Variant="Variant.Outlined" />
-                </MudItem>
-                <MudItem xs="12" sm="6">
-                    <MudTextField @bind-Value="_userProfile.LastName" Label="Last Name" Variant="Variant.Outlined" />
-                </MudItem>
-            </MudGrid>
-        </MudCardContent>
-        <MudCardActions>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveChanges" Class="ml-2 mb-2">Save Changes</MudButton>
-        </MudCardActions>
-    </MudCard>
+    <MudGrid Spacing="4">
+        <MudItem xs="12" md="4">
+            <MudPaper Class="pa-4 d-flex flex-column align-center" Elevation="3">
+                <MudAvatar Color="Color.Primary" Style="height:150px; width:150px; font-size:4rem;">
+                    @if (!string.IsNullOrEmpty(_picture))
+                    {
+                        <MudImage Src="@_picture" Fluid="true" />
+                    }
+                    else
+                    {
+                        @_initials
+                    }
+                </MudAvatar>
+                <MudText Typo="Typo.h5" Class="mt-4">@_userProfile.FirstName @_userProfile.LastName</MudText>
+                <MudText Typo="Typo.body1" Class="mud-text-secondary">@_email</MudText>
+
+                @if (_registrationDateTime.HasValue)
+                {
+                    <MudText Typo="Typo.caption" Class="mt-2">Registered on: @_registrationDateTime.Value.ToShortDateString()</MudText>
+                }
+
+                <div class="d-flex flex-wrap gap-1 mt-4">
+                    @foreach (var role in _roles)
+                    {
+                        <MudChip T="string" Color="Color.Primary" Size="Size.Small">@role</MudChip>
+                    }
+                </div>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="8">
+            <MudCard Elevation="3">
+                <MudForm @ref="_form" @bind-IsValid="_isFormValid">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Profile Details</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudGrid>
+                            <MudItem xs="12" sm="6">
+                                <MudTextField @bind-Value="_userProfile.FirstName" For="@(() => _userProfile.FirstName)" Label="First Name" Variant="Variant.Outlined" />
+                            </MudItem>
+                            <MudItem xs="12" sm="6">
+                                <MudTextField @bind-Value="_userProfile.LastName" For="@(() => _userProfile.LastName)" Label="Last Name" Variant="Variant.Outlined" />
+                            </MudItem>
+                            <MudItem xs="12">
+                                <MudTextField @bind-Value="_userProfile.PhoneNumber" For="@(() => _userProfile.PhoneNumber)" Label="Phone Number" Variant="Variant.Outlined" />
+                            </MudItem>
+                            <MudItem xs="12">
+                                <MudTextField @bind-Value="_userProfile.Bio" For="@(() => _userProfile.Bio)" Label="About Me / Bio" Variant="Variant.Outlined" Lines="4" />
+                            </MudItem>
+                        </MudGrid>
+                    </MudCardContent>
+                    <MudCardActions Class="px-4 pb-4">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   OnClick="SaveChanges"
+                                   Disabled="@_isSaving"
+                                   Class="ml-auto">
+                            @if (_isSaving)
+                            {
+                                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                                <MudText Class="ms-2">Saving...</MudText>
+                            }
+                            else
+                            {
+                                <text>Save Changes</text>
+                            }
+                        </MudButton>
+                    </MudCardActions>
+                </MudForm>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
 }
+
 
 @code {
     private UserProfile? _userProfile;
+    private MudForm? _form;
+    private bool _isSaving = false;
+    private bool _isFormValid;
+    private string? _picture;
+    private string? _email;
+    private string? _initials;
+    private DateTime? _registrationDateTime;
+    private List<string> _roles = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -49,17 +114,50 @@ else
 
         if (user.Identity is { IsAuthenticated: true })
         {
-            // This will get the existing profile or create a new one on the fly
             _userProfile = await UserProfileService.GetOrCreateUserProfileAsync(user);
+            _picture = user.Claims.FirstOrDefault(c => c.Type == "picture")?.Value;
+
+            // This line is now corrected to look for your custom claim
+            _email = user.FindFirst("https://wpl.codersden.com/email")?.Value;
+
+            if (!string.IsNullOrEmpty(_userProfile?.FirstName))
+            {
+                _initials = _userProfile.FirstName.Substring(0, 1).ToUpper();
+            }
+
+            var registrationDateClaim = user.FindFirst("https://wpl.codersden.com/created_at")?.Value;
+            if (!string.IsNullOrEmpty(registrationDateClaim))
+            {
+                _registrationDateTime = DateTime.Parse(registrationDateClaim, null, System.Globalization.DateTimeStyles.RoundtripKind);
+            }
+
+            _roles = user.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
         }
     }
 
     private async Task SaveChanges()
     {
-        if (_userProfile is not null)
+        if (_userProfile is null || _form is null) return;
+        await _form.Validate();
+        if (!_isFormValid)
+        {
+            Snackbar.Add("Please fix validation errors.", Severity.Warning);
+            return;
+        }
+
+        _isSaving = true;
+        try
         {
             await UserProfileService.UpdateUserProfileAsync(_userProfile);
             Snackbar.Add("Profile saved successfully!", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving profile: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
         }
     }
 }

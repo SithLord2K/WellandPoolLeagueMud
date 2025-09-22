@@ -10,7 +10,7 @@ namespace WellandPoolLeagueMud.Data
             // Build configuration to read appsettings.json
             var configuration = new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile("appsettings.json")
+                .AddJsonFile("appsettings.Development.json")
                 .Build();
 
             // Create DbContextOptionsBuilder

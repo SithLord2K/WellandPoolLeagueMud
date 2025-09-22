@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
-using WellandPoolLeagueMud.Data; // Assuming your DbContext is here
+using WellandPoolLeagueMud.Data;
 using WellandPoolLeagueMud.Data.Models;
 
 namespace WellandPoolLeagueMud.Data.Services;
@@ -33,10 +33,11 @@ public class UserProfileService : IUserProfileService
 
         if (userProfile == null)
         {
+            // Use standard ClaimTypes for better maintainability
+            var firstName = user.FindFirstValue(ClaimTypes.GivenName);
+            var lastName = user.FindFirstValue(ClaimTypes.Surname);
 
-            var firstName = user.FindFirstValue("given_name");
-            var lastName = user.FindFirstValue("family_name");
-
+            // Fallback logic to parse the full name if specific claims aren't present
             if (string.IsNullOrWhiteSpace(firstName) && string.IsNullOrWhiteSpace(lastName))
             {
                 var fullName = user.Identity?.Name;
@@ -59,9 +60,9 @@ public class UserProfileService : IUserProfileService
             userProfile = new UserProfile
             {
                 Auth0UserId = auth0Id,
-                FirstName = firstName,
-                LastName = lastName,
-                Email = user.Claims.FirstOrDefault(c => c.Type == "https://wpl.codersden.com/email")?.Value
+                FirstName = firstName ?? "New",
+                LastName = lastName ?? "User",
+
             };
 
             _context.UserProfiles.Add(userProfile);

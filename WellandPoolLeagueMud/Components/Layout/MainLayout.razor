@@ -20,9 +20,9 @@
         </MudAvatar>
         <MudText Typo="Typo.h5" Class="ml-3 league-name-text">Welland Pool League</MudText>
         <MudSpacer />
-        @if (AppState.IsLoggedIn && AppState.Roles != null)
+        @if (AppState.IsLoggedIn && AppState.Roles.FirstOrDefault() == null)
         {
-            <MudText Typo="Typo.subtitle1">Hello, @AppState.Username (@AppState.Roles)</MudText>
+            <MudText Typo="Typo.subtitle1">Hello, @AppState.Username (@AppState.Roles.FirstOrDefault())</MudText>
 
             @* For logged-in users, show a single dropdown menu *@
             <MudMenu Icon="@Icons.Material.Filled.Person" Color="Color.Inherit" Dense="true" AnchorOrigin="Origin.BottomRight">
@@ -33,7 +33,7 @@
                 </MudMenuItem>
             </MudMenu>
         }
-        else if (AppState.IsLoggedIn && AppState.Roles == null)
+        else if (AppState.IsLoggedIn && AppState.Roles.Count !> 0)
         {
             <MudText Typo="Typo.subtitle1">Hello, @AppState.Username (No Role)</MudText>
 
@@ -57,7 +57,7 @@
     </MudDrawer>
     <MudMainContent Class="pt-16 pa-4" Style="margin-top: 20px; margin-bottom: 50px;">
         <MudPaper id="main-content-paper" Class="pa-5 ma-2" Elevation="2">
-            @if ((AppState.Roles == "League_Admin" || AppState.Roles == "Super_User") && IsAdminPage())
+            @if ((AppState.Roles.Contains("League_Admin") || AppState.Roles.Contains("Super_User")) && IsAdminPage())
             {
                 <MudAlert Severity="Severity.Info" Elevation="25" Variant="Variant.Filled" Dense="true" Class="text-center mb-4">
                     You are logged in as an Admin user. Be careful when editing data.
@@ -72,7 +72,7 @@
         <MudSpacer />
         <MudButton Href="https://www.buymeacoffee.com/wileysoftware"
                    Target="_blank"
-                   Variant="Variant.Text"
+                   Variant="Variant.Outlined"
                    Color="Color.Inherit"
                    StartIcon="@Icons.Material.Filled.LocalDrink"
                    Style="text-transform:none;">

@@ -157,7 +157,6 @@ else if (_users is not null && _allRoles is not null)
             {
                 throw new InvalidOperationException("Failed to load users or roles.");
             }
-            //Snackbar.Add($"Loaded {_users.Count} users and {_allRoles.Count} roles.", Severity.Success);
         }
         catch (Exception ex)
         {
@@ -200,9 +199,9 @@ else if (_users is not null && _allRoles is not null)
     {
         var parameters = new DialogParameters { ["AllRoles"] = _allRoles };
         var dialog = await DialogService.ShowAsync<AddUserDialog>("Create New User", parameters);
-        var result = dialog.Result;
+        var result = await dialog.Result;
 
-        if (!result.IsCanceled)
+        if (result != null && !result.Canceled)
         {
             await RefreshData();
         }
@@ -218,11 +217,10 @@ else if (_users is not null && _allRoles is not null)
             ["Color"] = Color.Error
         };
 
-        // Use ShowAsync instead of obsolete Show
         var dialog = await DialogService.ShowAsync<MudMessageBox>("Confirm Deletion", parameters);
-        var result = dialog.Result;
+        var result = await dialog.Result;
 
-        if (result.IsCanceled == false && bool.TryParse(result.Result?.ToString(), out var confirmed) && confirmed)
+        if (result != null && !result.Canceled && bool.TryParse(result.Data?.ToString(), out var confirmed) && confirmed)
         {
             try
             {

@@ -1,9 +1,8 @@
 using Auth0.AspNetCore.Authentication;
-using Auth0.AuthenticationApi;
-using Auth0.AuthenticationApi.Models;
 using Auth0.ManagementApi;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
@@ -11,10 +10,13 @@ using MudBlazor.Services;
 using QuestPDF.Fluent;
 using QuestPDF.Infrastructure;
 using Serilog;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using WellandPoolLeagueMud.AuthenticationStateSyncer.PersistingRevalidatingAuthenticationStateProvider;
 using WellandPoolLeagueMud.Clients;
 using WellandPoolLeagueMud.Components;
 using WellandPoolLeagueMud.Data;
+using WellandPoolLeagueMud.Data.Models;
 using WellandPoolLeagueMud.Data.Services;
 using WellandPoolLeagueMud.Handlers;
 using WellandPoolLeagueMud.Reports;
@@ -60,26 +62,17 @@ try
         .SetApplicationName("WellandPoolLeague");
 
     // --- Auth0 Configuration and Services ---
-    // Configure Auth0 settings
     builder.Services.Configure<Auth0Settings>(builder.Configuration.GetSection(Auth0Settings.SectionName));
-
-    // Add memory cache for token caching
     builder.Services.AddMemoryCache();
-
-    // Register Auth0 token service and factory
     builder.Services.AddSingleton<IAuth0TokenService, Auth0TokenService>();
     builder.Services.AddScoped<IAuth0ManagementClientFactory, Auth0ManagementClientFactory>();
-
-    // Register ManagementApiClient using the factory (deferred creation)
     builder.Services.AddScoped<IManagementApiClient>(sp =>
     {
         var tokenService = sp.GetRequiredService<IAuth0TokenService>();
         var config = sp.GetRequiredService<IConfiguration>();
         var domain = config["Auth0:Domain"];
-
         var logger = sp.GetRequiredService<ILogger<Program>>();
         logger.LogInformation("Creating ManagementApiClient for domain: {Domain}", domain);
-
         try
         {
             var token = tokenService.GetManagementApiTokenAsync().GetAwaiter().GetResult();
@@ -91,14 +84,10 @@ try
             throw;
         }
     });
-
     builder.Services.AddScoped<IAuth0ManagementService, Auth0ManagementService>();
-
     builder.Services.AddHttpClient<UserManagementClient>()
         .AddHttpMessageHandler<CookieForwardingHandler>();
-
     builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(UserManagementClient)));
-
     builder.Services.AddControllers();
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
@@ -107,6 +96,37 @@ try
     {
         options.Domain = builder.Configuration.GetValue<string>("Auth0:Domain")!;
         options.ClientId = builder.Configuration.GetValue<string>("Auth0:ClientId")!;
+    });
+
+    // This directly configures the underlying OpenIdConnect handler that Auth0 uses.
+    builder.Services.Configure<OpenIdConnectOptions>(Auth0Constants.AuthenticationScheme, options =>
+    {
+        options.Events.OnTicketReceived = (context) =>
+        {
+            const string namespaceUrl = "https://wpl.codersden.com/";
+            const string createdAtClaimName = $"{namespaceUrl}created_at";
+
+            if (context.Principal?.HasClaim(c => c.Type == createdAtClaimName) == true)
+            {
+                return Task.CompletedTask;
+            }
+
+            var idToken = context.Properties?.GetTokenValue("id_token");
+            if (idToken != null)
+            {
+                var handler = new JwtSecurityTokenHandler();
+                var token = handler.ReadJwtToken(idToken);
+                var createdAtClaim = token.Claims.FirstOrDefault(c => c.Type == createdAtClaimName);
+
+                if (createdAtClaim != null)
+                {
+                    var claimsIdentity = context.Principal?.Identity as ClaimsIdentity;
+                    claimsIdentity?.AddClaim(new Claim(createdAtClaim.Type, createdAtClaim.Value));
+                }
+            }
+
+            return Task.CompletedTask;
+        };
     });
 
     builder.Services.AddCascadingAuthenticationState();
@@ -125,7 +145,7 @@ try
 
     var app = builder.Build();
 
-    // --- 3. Add Serilog Request Logging Middleware ---
+    // --- Middleware Pipeline ---
     app.UseSerilogRequestLogging();
 
     if (app.Environment.IsDevelopment())
@@ -143,6 +163,7 @@ try
     app.UseAuthorization();
     app.UseAntiforgery();
 
+    // --- Endpoints ---
     app.MapGet("/Account/Login", async (HttpContext httpContext, string returnUrl = "/") =>
     {
         var authenticationProperties = new LoginAuthenticationPropertiesBuilder()
@@ -160,6 +181,15 @@ try
         await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
     });
 
+    app.MapGet("/Account/ChangePassword", async (HttpContext httpContext) =>
+    {
+        var authenticationProperties = new LoginAuthenticationPropertiesBuilder()
+            .WithRedirectUri("/profile")
+            .Build();
+
+        await httpContext.ChallengeAsync(Auth0Constants.AuthenticationScheme, authenticationProperties);
+    });
+
     if (app.Environment.IsDevelopment())
     {
         app.UseSwagger();
@@ -167,19 +197,14 @@ try
     }
 
     var reportsApi = app.MapGroup("api/reports")
-                    .RequireAuthorization();
+                      .RequireAuthorization();
 
     reportsApi.MapGet("teamstandings", async (ITeamService teamService, IWebHostEnvironment env) =>
     {
-        // Get the path to the logo file
         var logoPath = Path.Combine(env.WebRootPath, "images", "appicon.png");
         byte[] logoData = await File.ReadAllBytesAsync(logoPath);
-
         var standings = await teamService.GetTeamStandingsAsync();
-
-        // Pass the logo data to the report's constructor
         var report = new TeamStandingsReport(standings, logoData);
-
         byte[] pdfBytes = report.GeneratePdf();
         return Results.File(pdfBytes, "application/pdf", "TeamStandingsReport.pdf");
     });
@@ -188,12 +213,8 @@ try
     {
         var logoPath = Path.Combine(env.WebRootPath, "images", "appicon.png");
         byte[] logoData = await File.ReadAllBytesAsync(logoPath);
-
         var results = await scheduleService.GetSchedulesByWeekAsync(weekNumber);
-
-        // Pass the logo data to the report's constructor
         var report = new WeeklyResultsReport(results, weekNumber, logoData);
-
         byte[] pdfBytes = report.GeneratePdf();
         return Results.File(pdfBytes, "application/pdf", $"Week_{weekNumber}_Results.pdf");
     });
@@ -202,16 +223,14 @@ try
     {
         var logoPath = Path.Combine(env.WebRootPath, "images", "appicon.png");
         byte[] logoData = await File.ReadAllBytesAsync(logoPath);
-
         var standings = await playerService.GetPlayerStandingsAsync();
         var report = new PlayerStandingsReport(standings, logoData);
-
         byte[] pdfBytes = report.GeneratePdf();
         return Results.File(pdfBytes, "application/pdf", "PlayerStandingsReport.pdf");
     });
 
     var api = app.MapGroup("api/usermanagement")
-             .RequireAuthorization("Super_User");
+                 .RequireAuthorization("Super_User");
 
     api.MapGet("users", async (IAuth0ManagementService service) =>
     {
@@ -245,6 +264,32 @@ try
             return Results.Problem($"Auth0 unhealthy: {ex.Message}");
         }
     }).AllowAnonymous();
+
+    app.MapPost("/api/notify/new-user", (NewUserPayload payload, ILogger<Program> logger, HttpContext context) =>
+    {
+        // Optional: Check for auth header
+        var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
+        var expectedToken = $"Bearer {Environment.GetEnvironmentVariable("WEBHOOK_SECRET")}";
+
+        if (authHeader != expectedToken)
+        {
+            logger.LogWarning("Unauthorized webhook attempt");
+            return Results.Unauthorized();
+        }
+
+        logger.LogInformation("--- NEW USER NOTIFICATION RECEIVED ---");
+        logger.LogInformation("To: {To}", payload.To);
+        logger.LogInformation("From: {From}", payload.From);
+        logger.LogInformation("Subject: {Subject}", payload.Subject);
+        logger.LogInformation("Body: {Body}", payload.Body);
+        logger.LogInformation("------------------------------------");
+
+        // Here you could actually send the email using your preferred service
+        // await emailService.SendAsync(payload);
+
+        return Results.Ok();
+    })
+    .AllowAnonymous();
 
     app.MapStaticAssets();
     app.MapRazorComponents<App>()
