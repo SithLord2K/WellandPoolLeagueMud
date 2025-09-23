@@ -20,7 +20,22 @@ public class AppState
             Username = user.Identity.Name;
             UserId = user.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
             Email = user.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
-            Roles = user.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+
+            var roles = new HashSet<string>();
+
+            var standardRoles = user.FindAll(ClaimTypes.Role).Select(c => c.Value);
+            foreach (var role in standardRoles)
+            {
+                roles.Add(role);
+            }
+
+            var customRoles = user.FindAll("https://wpl.codersden.com/roles").Select(c => c.Value);
+            foreach (var role in customRoles)
+            {
+                roles.Add(role);
+            }
+
+            Roles = roles.ToList();
 
             var registrationDateClaim = user.FindFirst("https://wpl.codersden.com/created_at")?.Value;
             if (!string.IsNullOrEmpty(registrationDateClaim))

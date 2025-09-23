@@ -22,7 +22,6 @@ using WellandPoolLeagueMud.Handlers;
 using WellandPoolLeagueMud.Reports;
 using WellandPoolLeagueMud.Services;
 
-// --- Configure Serilog Bootstrap Logger ---
 Log.Logger = new LoggerConfiguration()
     .Enrich.FromLogContext()
     .WriteTo.Console()
@@ -35,13 +34,11 @@ try
     Log.Information("Starting up the application");
     var builder = WebApplication.CreateBuilder(args);
 
-    // --- Add Serilog to the Host Builder ---
     builder.Host.UseSerilog((context, services, configuration) => configuration
         .ReadFrom.Configuration(context.Configuration)
         .ReadFrom.Services(services)
         .Enrich.FromLogContext());
 
-    // --- Your Existing Service Registrations ---
     builder.Services.AddScoped<IPlayerService, PlayerService>();
     builder.Services.AddScoped<ITeamService, TeamService>();
     builder.Services.AddScoped<IPlayerGameService, PlayerGameService>();
@@ -61,7 +58,6 @@ try
         .PersistKeysToFileSystem(new DirectoryInfo(keysFolder))
         .SetApplicationName("WellandPoolLeague");
 
-    // --- Auth0 Configuration and Services ---
     builder.Services.Configure<Auth0Settings>(builder.Configuration.GetSection(Auth0Settings.SectionName));
     builder.Services.AddMemoryCache();
     builder.Services.AddSingleton<IAuth0TokenService, Auth0TokenService>();
@@ -98,30 +94,34 @@ try
         options.ClientId = builder.Configuration.GetValue<string>("Auth0:ClientId")!;
     });
 
-    // This directly configures the underlying OpenIdConnect handler that Auth0 uses.
     builder.Services.Configure<OpenIdConnectOptions>(Auth0Constants.AuthenticationScheme, options =>
     {
+        options.TokenValidationParameters.RoleClaimType = "https://wpl.codersden.com/roles";
+
         options.Events.OnTicketReceived = (context) =>
         {
             const string namespaceUrl = "https://wpl.codersden.com/";
             const string createdAtClaimName = $"{namespaceUrl}created_at";
-
-            if (context.Principal?.HasClaim(c => c.Type == createdAtClaimName) == true)
-            {
-                return Task.CompletedTask;
-            }
 
             var idToken = context.Properties?.GetTokenValue("id_token");
             if (idToken != null)
             {
                 var handler = new JwtSecurityTokenHandler();
                 var token = handler.ReadJwtToken(idToken);
-                var createdAtClaim = token.Claims.FirstOrDefault(c => c.Type == createdAtClaimName);
+                var claimsIdentity = context.Principal?.Identity as ClaimsIdentity;
 
-                if (createdAtClaim != null)
+                var createdAtClaim = token.Claims.FirstOrDefault(c => c.Type == createdAtClaimName);
+                if (createdAtClaim != null && !claimsIdentity.HasClaim(c => c.Type == createdAtClaim.Type))
                 {
-                    var claimsIdentity = context.Principal?.Identity as ClaimsIdentity;
                     claimsIdentity?.AddClaim(new Claim(createdAtClaim.Type, createdAtClaim.Value));
+                }
+
+                const string rolesClaimName = $"{namespaceUrl}roles";
+                var rolesClaims = token.Claims.Where(c => c.Type == rolesClaimName);
+
+                foreach (var roleClaim in rolesClaims)
+                {
+                    claimsIdentity?.AddClaim(new Claim(ClaimTypes.Role, roleClaim.Value));
                 }
             }
 
@@ -145,7 +145,6 @@ try
 
     var app = builder.Build();
 
-    // --- Middleware Pipeline ---
     app.UseSerilogRequestLogging();
 
     if (app.Environment.IsDevelopment())
@@ -163,7 +162,6 @@ try
     app.UseAuthorization();
     app.UseAntiforgery();
 
-    // --- Endpoints ---
     app.MapGet("/Account/Login", async (HttpContext httpContext, string returnUrl = "/") =>
     {
         var authenticationProperties = new LoginAuthenticationPropertiesBuilder()
@@ -197,7 +195,7 @@ try
     }
 
     var reportsApi = app.MapGroup("api/reports")
-                      .RequireAuthorization();
+                         .RequireAuthorization();
 
     reportsApi.MapGet("teamstandings", async (ITeamService teamService, IWebHostEnvironment env) =>
     {
@@ -230,7 +228,7 @@ try
     });
 
     var api = app.MapGroup("api/usermanagement")
-                 .RequireAuthorization("Super_User");
+               .RequireAuthorization("Super_User");
 
     api.MapGet("users", async (IAuth0ManagementService service) =>
     {
@@ -264,32 +262,6 @@ try
             return Results.Problem($"Auth0 unhealthy: {ex.Message}");
         }
     }).AllowAnonymous();
-
-    app.MapPost("/api/notify/new-user", (NewUserPayload payload, ILogger<Program> logger, HttpContext context) =>
-    {
-        // Optional: Check for auth header
-        var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
-        var expectedToken = $"Bearer {Environment.GetEnvironmentVariable("WEBHOOK_SECRET")}";
-
-        if (authHeader != expectedToken)
-        {
-            logger.LogWarning("Unauthorized webhook attempt");
-            return Results.Unauthorized();
-        }
-
-        logger.LogInformation("--- NEW USER NOTIFICATION RECEIVED ---");
-        logger.LogInformation("To: {To}", payload.To);
-        logger.LogInformation("From: {From}", payload.From);
-        logger.LogInformation("Subject: {Subject}", payload.Subject);
-        logger.LogInformation("Body: {Body}", payload.Body);
-        logger.LogInformation("------------------------------------");
-
-        // Here you could actually send the email using your preferred service
-        // await emailService.SendAsync(payload);
-
-        return Results.Ok();
-    })
-    .AllowAnonymous();
 
     app.MapStaticAssets();
     app.MapRazorComponents<App>()

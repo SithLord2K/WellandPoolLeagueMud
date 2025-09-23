@@ -20,7 +20,7 @@
         </MudAvatar>
         <MudText Typo="Typo.h5" Class="ml-3 league-name-text">Welland Pool League</MudText>
         <MudSpacer />
-        @if (AppState.IsLoggedIn && AppState.Roles.FirstOrDefault() == null)
+        @if (AppState.IsLoggedIn && AppState.Roles.FirstOrDefault() != null)
         {
             <MudText Typo="Typo.subtitle1">Hello, @AppState.Username (@AppState.Roles.FirstOrDefault())</MudText>
 
@@ -33,7 +33,7 @@
                 </MudMenuItem>
             </MudMenu>
         }
-        else if (AppState.IsLoggedIn && AppState.Roles.Count !> 0)
+        else if (AppState.IsLoggedIn && AppState.Roles.FirstOrDefault() == null)
         {
             <MudText Typo="Typo.subtitle1">Hello, @AppState.Username (No Role)</MudText>
 
