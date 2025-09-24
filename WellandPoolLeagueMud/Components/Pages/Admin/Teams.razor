@@ -6,6 +6,7 @@
 @inject ISnackbar Snackbar
 @inject ITeamService TeamService
 @inject IPlayerService PlayerService
+@inject IBarService BarService
 
 <PageTitle>Teams Administration</PageTitle>
 
@@ -28,14 +29,16 @@
                                 <MudSelect T="int?"
                                            Label="Choose Team to Edit"
                                            Value="team.TeamId == 0 ? null : team.TeamId"
-                                           ValueChanged="LoadTeamAsync"
+                                           ValueChanged="async (id) => await LoadTeamAsync(id)"
                                            Variant="Variant.Filled">
                                     <MudSelectItem T="int?" Value="null">Create New Team</MudSelectItem>
                                     @if (allTeams is not null)
                                     {
                                         @foreach (var t in allTeams)
                                         {
-                                            <MudSelectItem T="int?" Value="t.TeamId">@t.TeamName</MudSelectItem>
+                                            <MudSelectItem T="int?" Value="t.TeamId">
+                                                @t.TeamName @(!string.IsNullOrEmpty(t.BarName) ? $"({t.BarName})" : "")
+                                            </MudSelectItem>
                                         }
                                     }
                                 </MudSelect>
@@ -46,15 +49,60 @@
                                               Label="Team Name"
                                               @bind-Value="team.TeamName"
                                               Required
-                                              Variant="Variant.Filled" />
+                                              Variant="Variant.Filled"
+                                              HelperText="Enter the team name" />
                             </MudItem>
+
+                            <MudItem xs="12">
+                                <MudSelect T="int?"
+                                           Label="Bar/Venue"
+                                           @bind-Value="team.BarId"
+                                           @bind-Value:after="UpdateSelectedBar"
+                                           Variant="Variant.Filled"
+                                           Clearable="true"
+                                           HelperText="Select the bar where this team plays home games">
+                                    <MudSelectItem T="int?" Value="null">No Bar Assigned</MudSelectItem>
+                                    @if (availableBars is not null)
+                                    {
+                                        @foreach (var bar in availableBars)
+                                        {
+                                            var isAvailable = bar.HasAvailableSlots || team.BarId == bar.BarId;
+                                            <MudSelectItem T="int?"
+                                                           Value="bar.BarId"
+                                                           Disabled="!isAvailable">
+                                                @bar.BarName
+                                                @if (!isAvailable)
+                                                {
+                                                    <text> (Full - @bar.CurrentTeamCount/@bar.MaxTeams)</text>
+                                                }
+                                                else if (bar.AvailableSlots < bar.MaxTeams)
+                                                {
+                                                    <text> (@bar.AvailableSlots slots available)</text>
+                                                }
+                                            </MudSelectItem>
+                                        }
+                                    }
+                                </MudSelect>
+                            </MudItem>
+
+                            @if (team.BarId.HasValue && selectedBar is not null)
+                            {
+                                <MudItem xs="12">
+                                    <MudAlert Severity="Severity.Info" Dense="true">
+                                        <strong>@selectedBar.BarName</strong> has @selectedBar.NumberOfTables tables
+                                        and can accommodate up to @selectedBar.MaxTeams teams
+                                        (@selectedBar.AvailableSlots slots remaining).
+                                    </MudAlert>
+                                </MudItem>
+                            }
 
                             <MudItem xs="12">
                                 <MudSelect T="int?"
                                            Label="Team Captain"
                                            @bind-Value="team.CaptainPlayerId"
                                            Variant="Variant.Filled"
-                                           Clearable="true">
+                                           Clearable="true"
+                                           HelperText="Select a team captain (optional)">
                                     <MudSelectItem T="int?" Value="null">No Captain Selected</MudSelectItem>
                                     @if (allPlayers is not null)
                                     {
@@ -69,39 +117,56 @@
                             @if (team.TeamId > 0)
                             {
                                 <MudItem xs="12">
-                                    <MudGrid>
-                                        <MudItem xs="6" sm="3">
-                                            <MudText Typo="Typo.subtitle2">Games Played:</MudText>
-                                            <MudText Typo="Typo.body1">@team.GamesPlayed</MudText>
-                                        </MudItem>
-                                        <MudItem xs="6" sm="3">
-                                            <MudText Typo="Typo.subtitle2">Wins:</MudText>
-                                            <MudText Typo="Typo.body1">@team.GamesWon</MudText>
-                                        </MudItem>
-                                        <MudItem xs="6" sm="3">
-                                            <MudText Typo="Typo.subtitle2">Losses:</MudText>
-                                            <MudText Typo="Typo.body1">@team.GamesLost</MudText>
-                                        </MudItem>
-                                        <MudItem xs="6" sm="3">
-                                            <MudText Typo="Typo.subtitle2">Win %:</MudText>
-                                            <MudText Typo="Typo.body1">@team.WinPercentage.ToString("F1")%</MudText>
-                                        </MudItem>
-                                    </MudGrid>
+                                    <MudCard>
+                                        <MudCardContent>
+                                            <MudText Typo="Typo.h6" Class="mb-3">Team Statistics</MudText>
+                                            <MudGrid>
+                                                <MudItem xs="6" sm="3">
+                                                    <MudText Typo="Typo.subtitle2">Games Played:</MudText>
+                                                    <MudText Typo="Typo.body1">@team.GamesPlayed</MudText>
+                                                </MudItem>
+                                                <MudItem xs="6" sm="3">
+                                                    <MudText Typo="Typo.subtitle2">Wins:</MudText>
+                                                    <MudText Typo="Typo.body1">@team.GamesWon</MudText>
+                                                </MudItem>
+                                                <MudItem xs="6" sm="3">
+                                                    <MudText Typo="Typo.subtitle2">Losses:</MudText>
+                                                    <MudText Typo="Typo.body1">@team.GamesLost</MudText>
+                                                </MudItem>
+                                                <MudItem xs="6" sm="3">
+                                                    <MudText Typo="Typo.subtitle2">Win %:</MudText>
+                                                    <MudText Typo="Typo.body1">@team.WinPercentage.ToString("F1")%</MudText>
+                                                </MudItem>
+                                            </MudGrid>
+                                        </MudCardContent>
+                                    </MudCard>
                                 </MudItem>
                             }
 
                             <MudItem xs="12" Class="d-flex justify-start gap-4 mt-4">
-                                <MudButton Variant="Variant.Filled" Color="Color.Tertiary" OnClick="SaveTeamAsync">
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Tertiary"
+                                           OnClick="SaveTeamAsync"
+                                           StartIcon="@Icons.Material.Filled.Save">
                                     @(team.TeamId == 0 ? "Create Team" : "Update Team")
                                 </MudButton>
+
                                 <MudButton Variant="Variant.Filled"
                                            Color="Color.Error"
                                            StartIcon="@Icons.Material.Filled.Refresh"
-                                           OnClick="ResetForm">Reset</MudButton>
+                                           OnClick="ResetForm">
+                                    Reset
+                                </MudButton>
+
                                 @if (team.TeamId > 0)
                                 {
                                     <AuthorizeView Roles="Super_User">
-                                        <MudButton Variant="Variant.Filled" Color="Color.Warning" OnClick="DeleteTeamAsync">Delete Team</MudButton>
+                                        <MudButton Variant="Variant.Filled"
+                                                   Color="Color.Warning"
+                                                   StartIcon="@Icons.Material.Filled.Delete"
+                                                   OnClick="DeleteTeamAsync">
+                                            Delete Team
+                                        </MudButton>
                                     </AuthorizeView>
                                 }
                             </MudItem>
@@ -117,6 +182,8 @@
     private TeamViewModel team = new();
     private List<TeamViewModel>? allTeams;
     private List<PlayerViewModel>? allPlayers;
+    private List<BarViewModel>? availableBars;
+    private BarViewModel? selectedBar;
     private bool isLoading = true;
 
     protected override async Task OnInitializedAsync()
@@ -131,6 +198,8 @@
             isLoading = true;
             allTeams = await TeamService.GetAllTeamsAsync();
             allPlayers = await PlayerService.GetAllPlayersAsync();
+            availableBars = await BarService.GetActiveBarsAsync();
+            await UpdateSelectedBar();
         }
         catch (Exception ex)
         {
@@ -140,6 +209,23 @@
         {
             isLoading = false;
         }
+    }
+
+    private async Task UpdateSelectedBar()
+    {
+        if (team.BarId.HasValue && availableBars is not null)
+        {
+            selectedBar = availableBars.FirstOrDefault(b => b.BarId == team.BarId.Value);
+            if (selectedBar is null)
+            {
+                selectedBar = await BarService.GetBarByIdAsync(team.BarId.Value);
+            }
+        }
+        else
+        {
+            selectedBar = null;
+        }
+        StateHasChanged();
     }
 
     private async Task LoadTeamAsync(int? teamId)
@@ -152,6 +238,7 @@
                 if (selectedTeam != null)
                 {
                     team = selectedTeam;
+                    await UpdateSelectedBar();
                 }
                 else
                 {
@@ -179,6 +266,16 @@
             return;
         }
 
+        if (team.BarId.HasValue)
+        {
+            var targetBar = availableBars?.FirstOrDefault(b => b.BarId == team.BarId.Value);
+            if (targetBar is not null && !targetBar.HasAvailableSlots && team.BarId != team.BarId)
+            {
+                Snackbar.Add($"Selected bar '{targetBar.BarName}' is full and cannot accept more teams.", Severity.Warning);
+                return;
+            }
+        }
+
         try
         {
             var isNewTeam = team.TeamId == 0;
@@ -198,7 +295,8 @@
                 var message = isNewTeam ? "Team created successfully!" : "Team updated successfully!";
                 Snackbar.Add(message, Severity.Success);
                 await LoadDataAsync();
-                team = result; // Update with the returned data
+                team = result;
+                await UpdateSelectedBar();
             }
             else
             {
@@ -239,5 +337,6 @@
     private void ResetForm()
     {
         team = new TeamViewModel();
+        selectedBar = null;
     }
 }

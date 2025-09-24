@@ -14,6 +14,7 @@ namespace WellandPoolLeagueMud.Data
         public DbSet<PlayerGame> PlayerGames { get; set; }
         public DbSet<Schedule> Schedules { get; set; }
         public DbSet<UserProfile> UserProfiles { get; set; }
+        public DbSet<Bar> Bars { get; set; } // ADD THIS LINE
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -24,6 +25,7 @@ namespace WellandPoolLeagueMud.Data
             modelBuilder.Entity<PlayerGame>().ToTable("WPLMud_PlayerGames");
             modelBuilder.Entity<Schedule>().ToTable("WPLMud_Schedules");
             modelBuilder.Entity<UserProfile>().ToTable("WPLMud_UserProfiles");
+            modelBuilder.Entity<Bar>().ToTable("WPLMud_Bars"); // ADD THIS LINE
 
             // Existing configurations...
             modelBuilder.Entity<Team>()
@@ -36,6 +38,13 @@ namespace WellandPoolLeagueMud.Data
                 .HasOne(t => t.Captain)
                 .WithMany(p => p.CaptainedTeams)
                 .HasForeignKey(t => t.CaptainPlayerId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // ADD THIS BLOCK - Team-Bar relationship
+            modelBuilder.Entity<Team>()
+                .HasOne(t => t.Bar)
+                .WithMany(b => b.Teams)
+                .HasForeignKey(t => t.BarId)
                 .OnDelete(DeleteBehavior.SetNull);
 
             modelBuilder.Entity<PlayerGame>()
@@ -77,6 +86,18 @@ namespace WellandPoolLeagueMud.Data
                 .IsRequired(false) // This makes the relationship optional
                 .OnDelete(DeleteBehavior.SetNull); // When a Player is deleted, set UserProfile.PlayerId to null
 
+            // ADD THIS BLOCK - Bar configuration
+            modelBuilder.Entity<Bar>(entity =>
+            {
+                entity.HasKey(e => e.BarId);
+                entity.Property(e => e.BarName).IsRequired().HasMaxLength(100);
+                entity.Property(e => e.NumberOfTables).IsRequired();
+                entity.Property(e => e.Address).HasMaxLength(255);
+                entity.Property(e => e.IsActive).HasDefaultValue(true);
+                entity.Property(e => e.CreatedDate).HasDefaultValueSql("GETUTCDATE()");
+                entity.Property(e => e.ModifiedDate).HasDefaultValueSql("GETUTCDATE()");
+            });
+
             // Existing indexes...
             modelBuilder.Entity<Player>()
                 .HasIndex(p => new { p.FirstName, p.LastName });
@@ -99,6 +120,14 @@ namespace WellandPoolLeagueMud.Data
             modelBuilder.Entity<UserProfile>()
                 .HasIndex(up => up.PlayerId)
                 .IsUnique();
+
+            // ADD THIS BLOCK - Bar indexes
+            modelBuilder.Entity<Bar>()
+                .HasIndex(b => b.BarName)
+                .IsUnique();
+
+            modelBuilder.Entity<Team>()
+                .HasIndex(t => t.BarId);
         }
     }
 }

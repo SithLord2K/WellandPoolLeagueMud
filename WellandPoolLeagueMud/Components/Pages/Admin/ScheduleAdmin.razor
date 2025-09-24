@@ -53,6 +53,7 @@
                                 <MudDatePicker Label="Game Date"
                                                @bind-Date="schedule.GameDate"
                                                DateFormat="MM/dd/yyyy"
+                                               PickerVariant="PickerVariant.Dialog"
                                                Variant="Variant.Filled"
                                                Required="true"
                                                RequiredError="Game date is required"
@@ -85,7 +86,7 @@
                                     <MudSelectItem T="int" Value="0">Select Home Team</MudSelectItem>
                                     @if (allTeams is not null)
                                     {
-                                        @foreach (var team in allTeams.OrderBy(t => t.TeamName))
+                                        @foreach (var team in allTeams.OrderBy(t => t.TeamId))
                                         {
                                             <MudSelectItem T="int" Value="@team.TeamId">@team.TeamName</MudSelectItem>
                                         }
@@ -105,7 +106,7 @@
                                     <MudSelectItem T="int" Value="0">Select Away Team</MudSelectItem>
                                     @if (allTeams is not null)
                                     {
-                                        @foreach (var team in allTeams.OrderBy(t => t.TeamName))
+                                        @foreach (var team in allTeams.OrderBy(t => t.TeamId))
                                         {
                                             <MudSelectItem T="int" Value="@team.TeamId">@team.TeamName</MudSelectItem>
                                         }
@@ -147,9 +148,10 @@
                                               @bind-Value="schedule.Notes"
                                               Lines="1"
                                               Variant="Variant.Filled"
-                                              AdornmentIcon="@Icons.Material.Filled.Numbers"
+                                              AdornmentIcon="@Icons.Material.Filled.ConfirmationNumber"
                                               Adornment="Adornment.Start"
-                                              HelperText="Table number at The Park bar." />
+                                              HelperText="Table number is required for 'Park' teams."
+                                              Validation="@(new Func<string, string>(ValidateNotes))" />
                             </MudItem>
 
                             <MudItem xs="12" sm="6">
@@ -206,8 +208,29 @@
         {
             <MudItem xs="12">
                 <MudPaper Class="pa-4" Elevation="3">
-                    <MudText Typo="Typo.h6" Class="mb-4">Current Schedule (@allSchedules.Count games)</MudText>
-                    <MudTable Items="@allSchedules.OrderBy(s => s.WeekNumber).ThenBy(s => s.GameDate)"
+                    <MudText Typo="Typo.h6" Class="mb-4">Current Schedule (@filteredSchedules.Count() games)</MudText>
+
+                    <MudGrid Class="mb-4">
+                        <MudItem xs="12" sm="6">
+                            <MudNumericField T="int?"
+                                             Label="Filter by Week"
+                                             Variant="Variant.Outlined"
+                                             @bind-Value="filterWeekNumber"
+                                             Clearable="true"
+                                             Adornment="Adornment.Start"
+                                             AdornmentIcon="@Icons.Material.Filled.FilterList" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudDatePicker Label="Filter by Date"
+                                           Variant="Variant.Outlined"
+                                           @bind-Date="filterGameDate"
+                                           Clearable="true"
+                                           Adornment="Adornment.Start"
+                                           AdornmentIcon="@Icons.Material.Filled.CalendarToday" />
+                        </MudItem>
+                    </MudGrid>
+
+                    <MudTable Items="@filteredSchedules"
                               Hover="true"
                               Striped="true"
                               Dense="true"
@@ -290,7 +313,7 @@
                         <NoRecordsContent>
                             <div class="d-flex flex-column align-center pa-4">
                                 <MudIcon Icon="@Icons.Material.Filled.EventBusy" Style="font-size: 2rem; color: var(--mud-palette-text-secondary);" />
-                                <MudText Typo="Typo.body2" Class="mud-text-secondary mt-2">No schedules found</MudText>
+                                <MudText Typo="Typo.body2" Class="mud-text-secondary mt-2">No schedules match the current filters</MudText>
                             </div>
                         </NoRecordsContent>
                     </MudTable>
@@ -308,6 +331,15 @@
     private int selectedScheduleId = 0;
     private bool isLoading = true;
     private bool isProcessing = false;
+
+    private int? filterWeekNumber;
+    private DateTime? filterGameDate;
+
+    private IEnumerable<ScheduleViewModel> filteredSchedules =>
+        allSchedules?.Where(s =>
+            (!filterWeekNumber.HasValue || s.WeekNumber == filterWeekNumber.Value) &&
+            (!filterGameDate.HasValue || s.GameDate?.Date == filterGameDate.Value.Date)
+        ).OrderBy(s => s.WeekNumber).ThenBy(s => s.GameDate) ?? Enumerable.Empty<ScheduleViewModel>();
 
     protected override async Task OnInitializedAsync()
     {
@@ -360,6 +392,31 @@
     {
         await form.Validate();
         if (!form.IsValid) return;
+
+        if (schedule.HomeTeamId == schedule.AwayTeamId && schedule.HomeTeamId != 0)
+        {
+            Snackbar.Add("Home and Away teams cannot be the same.", Severity.Error);
+            return;
+        }
+
+        if (allSchedules != null)
+        {
+            var teamsInWeek = allSchedules
+                .Where(s => s.WeekNumber == schedule.WeekNumber && s.ScheduleId != selectedScheduleId)
+                .SelectMany(s => new[] { s.HomeTeamId, s.AwayTeamId })
+                .ToHashSet();
+
+            if (teamsInWeek.Contains(schedule.HomeTeamId))
+            {
+                Snackbar.Add($"Error: Home Team is already scheduled for Week {schedule.WeekNumber}.", Severity.Error);
+                return;
+            }
+            if (teamsInWeek.Contains(schedule.AwayTeamId))
+            {
+                Snackbar.Add($"Error: Away Team is already scheduled for Week {schedule.WeekNumber}.", Severity.Error);
+                return;
+            }
+        }
 
         schedule.IsComplete = schedule.WinningTeamId.HasValue;
         isProcessing = true;
@@ -449,6 +506,22 @@
         {
             isProcessing = false;
         }
+    }
+
+    private string ValidateNotes(string notes)
+    {
+        if (schedule.HomeTeamId > 0 && allTeams != null)
+        {
+            var homeTeam = allTeams.FirstOrDefault(t => t.TeamId == schedule.HomeTeamId);
+            if (homeTeam != null && homeTeam.TeamName.Contains("Park", StringComparison.OrdinalIgnoreCase))
+            {
+                if (string.IsNullOrWhiteSpace(notes))
+                {
+                    return "Table # is required when the home team is a 'Park' team.";
+                }
+            }
+        }
+        return null!;
     }
 
     private void ResetForm()

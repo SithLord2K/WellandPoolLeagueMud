@@ -48,6 +48,7 @@ try
     builder.Services.AddTransient<CookieForwardingHandler>();
     builder.Services.AddScoped<IPlayerUserService, PlayerUserService>();
     builder.Services.AddScoped<IScheduleGeneratorService, ScheduleGeneratorService>();
+    builder.Services.AddScoped<IBarService, BarService>();
 
     builder.Services.AddDbContextFactory<WellandPoolLeagueDbContext>(options =>
     {

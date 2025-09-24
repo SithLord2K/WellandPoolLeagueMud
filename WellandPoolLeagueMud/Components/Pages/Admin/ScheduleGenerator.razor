@@ -42,7 +42,11 @@ else
                                 </CardHeaderContent>
                             </MudCardHeader>
                             <MudCardContent>
-                                <MudDatePicker @bind-Date="_startDate" Label="Start Date" Required="true" Class="mb-3" />
+                                <MudDatePicker @bind-Date="_startDate"
+                                               Label="Start Date"
+                                               Required="true" Class="mb-3"
+                                               PickerVariant="PickerVariant.Dialog"
+                                               Variant="Variant.Filled" />
                                 <MudSelect T="DayOfWeek" @bind-Value="_gameDay" Label="Game Day" Required="true" Class="mb-3">
                                     @foreach (DayOfWeek day in Enum.GetValues(typeof(DayOfWeek)))
                                     {
@@ -194,7 +198,7 @@ else
 
     private List<TeamViewModel> _teams = new();
     private List<ScheduleViewModel> _generatedSchedule = new();
-    private DateTime? _startDate = DateTime.Today.AddDays(7);
+    private DateTime? _startDate = DateTime.Today;
     private DayOfWeek _gameDay = DayOfWeek.Monday;
     private ScheduleType _scheduleType = ScheduleType.DoubleRoundRobin;
     private int _weeksToGenerate = 10;

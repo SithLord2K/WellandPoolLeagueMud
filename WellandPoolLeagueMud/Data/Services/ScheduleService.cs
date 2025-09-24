@@ -66,6 +66,25 @@ namespace WellandPoolLeagueMud.Data.Services
 
         public async Task<ScheduleViewModel> CreateScheduleAsync(ScheduleViewModel scheduleVM)
         {
+            var homeTeam = await _context.Teams.FindAsync(scheduleVM.HomeTeamId);
+            var awayTeam = await _context.Teams.FindAsync(scheduleVM.AwayTeamId);
+
+            var homeTeamAlreadyScheduled = await _context.Schedules
+                .AnyAsync(s => s.WeekNumber == scheduleVM.WeekNumber && (s.HomeTeamId == scheduleVM.HomeTeamId || s.AwayTeamId == scheduleVM.HomeTeamId));
+
+            if (homeTeamAlreadyScheduled)
+            {
+                throw new InvalidOperationException($"{homeTeam?.TeamName} is already scheduled to play in week {scheduleVM.WeekNumber}.");
+            }
+
+            var awayTeamAlreadyScheduled = await _context.Schedules
+                .AnyAsync(s => s.WeekNumber == scheduleVM.WeekNumber && (s.HomeTeamId == scheduleVM.AwayTeamId || s.AwayTeamId == scheduleVM.AwayTeamId));
+
+            if (awayTeamAlreadyScheduled)
+            {
+                throw new InvalidOperationException($"{awayTeam?.TeamName} is already scheduled to play in week {scheduleVM.WeekNumber}.");
+            }
+
             var schedule = new Schedule
             {
                 WeekNumber = scheduleVM.WeekNumber,
@@ -88,6 +107,25 @@ namespace WellandPoolLeagueMud.Data.Services
         {
             var schedule = await _context.Schedules.FindAsync(scheduleVM.ScheduleId);
             if (schedule == null) return null;
+
+            var homeTeam = await _context.Teams.FindAsync(scheduleVM.HomeTeamId);
+            var awayTeam = await _context.Teams.FindAsync(scheduleVM.AwayTeamId);
+
+            var homeTeamAlreadyScheduled = await _context.Schedules
+                .AnyAsync(s => s.ScheduleId != scheduleVM.ScheduleId && s.WeekNumber == scheduleVM.WeekNumber && (s.HomeTeamId == scheduleVM.HomeTeamId || s.AwayTeamId == scheduleVM.HomeTeamId));
+
+            if (homeTeamAlreadyScheduled)
+            {
+                throw new InvalidOperationException($"{homeTeam?.TeamName} is already scheduled to play in week {scheduleVM.WeekNumber} in another game.");
+            }
+
+            var awayTeamAlreadyScheduled = await _context.Schedules
+                .AnyAsync(s => s.ScheduleId != scheduleVM.ScheduleId && s.WeekNumber == scheduleVM.WeekNumber && (s.HomeTeamId == scheduleVM.AwayTeamId || s.AwayTeamId == scheduleVM.AwayTeamId));
+
+            if (awayTeamAlreadyScheduled)
+            {
+                throw new InvalidOperationException($"{awayTeam?.TeamName} is already scheduled to play in week {scheduleVM.WeekNumber} in another game.");
+            }
 
             schedule.WeekNumber = scheduleVM.WeekNumber;
             schedule.HomeTeamId = scheduleVM.HomeTeamId;
@@ -222,7 +260,6 @@ namespace WellandPoolLeagueMud.Data.Services
             var schedule = await _context.Schedules.FindAsync(scheduleId);
             if (schedule == null) return false;
 
-            // Verify that the winning team is actually playing in this game
             if (schedule.HomeTeamId != winningTeamId && schedule.AwayTeamId != winningTeamId)
                 return false;
 

@@ -16,6 +16,11 @@ namespace WellandPoolLeagueMud.Data.Models
         [ForeignKey("CaptainPlayerId")]
         public virtual Player? Captain { get; set; }
 
+        [ForeignKey("Bar")]
+        public int? BarId { get; set; }
+
+        public virtual Bar? Bar { get; set; }
+
         public virtual ICollection<Player> Players { get; set; } = new List<Player>();
         public virtual ICollection<PlayerGame> PlayerGames { get; set; } = new List<PlayerGame>();
         public virtual ICollection<Schedule> HomeGames { get; set; } = new List<Schedule>();

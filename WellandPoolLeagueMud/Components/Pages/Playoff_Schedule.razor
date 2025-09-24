@@ -17,6 +17,7 @@
                        ShowToolbar="false"
                        IsDateDisabledFunc="@((DateTime dt)=>((int)dt.DayOfWeek != 2))"
                        PickerVariant="PickerVariant.Dialog"
+                       Variant="Variant.Filled"
                        DateChanged="@(e => SelectedDate(e))"
                        Date="selectedDate"
                        DateFormat="MM-dd-yyyy" />

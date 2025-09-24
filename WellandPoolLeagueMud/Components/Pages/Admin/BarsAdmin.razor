@@ -1,0 +1,379 @@
+﻿@page "/admin/bars"
+@attribute [Authorize(Roles = "Super_User")]
+@using WellandPoolLeagueMud.Data.ViewModels
+@using WellandPoolLeagueMud.Data.Services
+@using MudBlazor
+@inject ISnackbar Snackbar
+@inject IBarService BarService
+
+<PageTitle>Bars Administration</PageTitle>
+
+<MudContainer>
+    <MudGrid Justify="Justify.Center" Spacing="4">
+        <MudItem xs="12" sm="10" md="8">
+            <MudPaper Class="pa-4">
+                <MudText Typo="Typo.h5" Class="mb-4">Add/Edit Bar</MudText>
+                <MudForm>
+                    <MudGrid>
+                        @if (isLoading)
+                        {
+                            <MudItem xs="12" Class="d-flex justify-center py-8">
+                                <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+                            </MudItem>
+                        }
+                        else
+                        {
+                            <MudItem xs="12">
+                                <MudSelect T="int?"
+                                           Label="Choose Bar to Edit"
+                                           ValueChanged="LoadBarAsync"
+                                           Variant="Variant.Filled">
+                                    <MudSelectItem T="int?" Value="null">Create New Bar</MudSelectItem>
+                                    @if (allBars is not null)
+                                    {
+                                        @foreach (var b in allBars)
+                                        {
+                                            <MudSelectItem T="int?" Value="b.BarId">
+                                                @b.BarName @(!b.IsActive ? " (Inactive)" : "")
+                                            </MudSelectItem>
+                                        }
+                                    }
+                                </MudSelect>
+                            </MudItem>
+
+                            <MudItem xs="12" md="8">
+                                <MudTextField T="string"
+                                              Label="Bar Name"
+                                              @bind-Value="bar.BarName"
+                                              Required
+                                              Variant="Variant.Filled"
+                                              HelperText="Enter the name of the bar/venue" />
+                            </MudItem>
+
+                            <MudItem xs="12" md="4">
+                                <MudNumericField T="int"
+                                                 Label="Number of Tables"
+                                                 @bind-Value="bar.NumberOfTables"
+                                                 Min="1"
+                                                 Max="20"
+                                                 Required
+                                                 Variant="Variant.Filled"
+                                                 HelperText="Pool tables available" />
+                            </MudItem>
+
+                            <MudItem xs="12">
+                                <MudTextField T="string"
+                                              Label="Address"
+                                              @bind-Value="bar.Address"
+                                              Lines="2"
+                                              Variant="Variant.Filled"
+                                              HelperText="Optional address of the bar" />
+                            </MudItem>
+
+                            <MudItem xs="12">
+                                <MudSwitch T="bool"
+                                           @bind-Value="bar.IsActive"
+                                           Label="Active"
+                                           Color="Color.Success" />
+                            </MudItem>
+
+                            @if (bar.BarId > 0)
+                            {
+                                <MudItem xs="12">
+                                    <MudCard>
+                                        <MudCardContent>
+                                            <MudText Typo="Typo.h6" Class="mb-3">Bar Statistics</MudText>
+                                            <MudGrid>
+                                                <MudItem xs="6" sm="3">
+                                                    <MudText Typo="Typo.subtitle2">Max Teams:</MudText>
+                                                    <MudText Typo="Typo.body1">@bar.MaxTeams</MudText>
+                                                </MudItem>
+                                                <MudItem xs="6" sm="3">
+                                                    <MudText Typo="Typo.subtitle2">Current Teams:</MudText>
+                                                    <MudText Typo="Typo.body1">@bar.CurrentTeamCount</MudText>
+                                                </MudItem>
+                                                <MudItem xs="6" sm="3">
+                                                    <MudText Typo="Typo.subtitle2">Available Slots:</MudText>
+                                                    <MudText Typo="Typo.body1" Color="@(bar.AvailableSlots > 0 ? Color.Success : Color.Warning)">
+                                                        @bar.AvailableSlots
+                                                    </MudText>
+                                                </MudItem>
+                                                <MudItem xs="6" sm="3">
+                                                    <MudText Typo="Typo.subtitle2">Tables:</MudText>
+                                                    <MudText Typo="Typo.body1">@bar.NumberOfTables</MudText>
+                                                </MudItem>
+                                            </MudGrid>
+
+                                            @if (bar.Teams.Any())
+                                            {
+                                                <MudText Typo="Typo.h6" Class="mt-4 mb-2">Teams at this Bar:</MudText>
+                                                <MudList T="Bar" Dense="true">
+                                                    @foreach (var team in bar.Teams)
+                                                    {
+                                                        <MudListItem Icon="@Icons.Material.Filled.Groups">
+                                                            <MudText>@team.TeamName</MudText>
+                                                        </MudListItem>
+                                                    }
+                                                </MudList>
+                                            }
+                                        </MudCardContent>
+                                    </MudCard>
+                                </MudItem>
+                            }
+
+                            <MudItem xs="12" Class="d-flex justify-start gap-4 mt-4">
+                                <MudButton Variant="Variant.Filled" 
+                                           Color="Color.Tertiary" 
+                                           OnClick="SaveBarAsync"
+                                           StartIcon="@Icons.Material.Filled.Save">
+                                    @(bar.BarId == 0 ? "Create Bar" : "Update Bar")
+                                </MudButton>
+                                
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Error"
+                                           StartIcon="@Icons.Material.Filled.Refresh"
+                                           OnClick="ResetForm">
+                                    Reset
+                                </MudButton>
+
+                                @if (bar.BarId > 0)
+                                {
+                                    @if (bar.IsActive)
+                                    {
+                                        <MudButton Variant="Variant.Filled" 
+                                                   Color="Color.Warning" 
+                                                   StartIcon="@Icons.Material.Filled.VisibilityOff"
+                                                   OnClick="DeactivateBarAsync">
+                                            Deactivate
+                                        </MudButton>
+                                    }
+                                    else
+                                    {
+                                        <MudButton Variant="Variant.Filled" 
+                                                   Color="Color.Success" 
+                                                   StartIcon="@Icons.Material.Filled.Visibility"
+                                                   OnClick="ActivateBarAsync">
+                                            Activate
+                                        </MudButton>
+                                    }
+
+                                    <AuthorizeView Roles="Super_User">
+                                        <MudButton Variant="Variant.Filled" 
+                                                   Color="Color.Error" 
+                                                   StartIcon="@Icons.Material.Filled.Delete"
+                                                   OnClick="DeleteBarAsync">
+                                            Delete Bar
+                                        </MudButton>
+                                    </AuthorizeView>
+                                }
+                            </MudItem>
+                        }
+                    </MudGrid>
+                </MudForm>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+@code {
+    private BarViewModel bar = new();
+    private List<BarViewModel>? allBars;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            isLoading = true;
+            allBars = await BarService.GetAllBarsAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading data: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadBarAsync(int? barId)
+    {
+        if (barId.HasValue && barId > 0)
+        {
+            try
+            {
+                var selectedBar = await BarService.GetBarByIdAsync(barId.Value);
+                if (selectedBar != null)
+                {
+                    bar = selectedBar;
+                }
+                else
+                {
+                    Snackbar.Add("Bar not found", Severity.Warning);
+                    ResetForm();
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error loading bar: {ex.Message}", Severity.Error);
+                ResetForm();
+            }
+        }
+        else
+        {
+            ResetForm();
+        }
+    }
+
+    private async Task SaveBarAsync()
+    {
+        if (string.IsNullOrWhiteSpace(bar.BarName))
+        {
+            Snackbar.Add("Bar name is required", Severity.Warning);
+            return;
+        }
+
+        if (bar.NumberOfTables < 1 || bar.NumberOfTables > 20)
+        {
+            Snackbar.Add("Number of tables must be between 1 and 20", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            var isNewBar = bar.BarId == 0;
+            bool success;
+
+            if (isNewBar)
+            {
+                var newBarId = await BarService.CreateBarAsync(bar);
+                success = newBarId > 0;
+                if (success)
+                {
+                    bar.BarId = newBarId;
+                }
+            }
+            else
+            {
+                success = await BarService.UpdateBarAsync(bar);
+            }
+
+            if (success)
+            {
+                var message = isNewBar ? "Bar created successfully!" : "Bar updated successfully!";
+                Snackbar.Add(message, Severity.Success);
+                await LoadDataAsync();
+
+                // Reload the current bar to get updated stats
+                if (!isNewBar)
+                {
+                    await LoadBarAsync(bar.BarId);
+                }
+            }
+            else
+            {
+                Snackbar.Add("Failed to save bar. Please try again.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving bar: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            ResetForm();
+        }
+    }
+
+    private async Task DeactivateBarAsync()
+    {
+        if (bar.BarId == 0) return;
+
+        try
+        {
+            var success = await BarService.DeactivateBarAsync(bar.BarId);
+
+            if (success)
+            {
+                bar.IsActive = false;
+                Snackbar.Add("Bar deactivated successfully!", Severity.Success);
+                await LoadDataAsync();
+            }
+            else
+            {
+                Snackbar.Add("Failed to deactivate bar.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error deactivating bar: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task ActivateBarAsync()
+    {
+        if (bar.BarId == 0) return;
+
+        try
+        {
+            var success = await BarService.ActivateBarAsync(bar.BarId);
+
+            if (success)
+            {
+                bar.IsActive = true;
+                Snackbar.Add("Bar activated successfully!", Severity.Success);
+                await LoadDataAsync();
+            }
+            else
+            {
+                Snackbar.Add("Failed to activate bar.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error activating bar: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task DeleteBarAsync()
+    {
+        if (bar.BarId == 0) return;
+
+        if (bar.Teams.Any())
+        {
+            Snackbar.Add("Cannot delete bar with assigned teams. Please reassign teams first.", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            var success = await BarService.DeleteBarAsync(bar.BarId);
+
+            if (success)
+            {
+                Snackbar.Add("Bar deleted successfully!", Severity.Success);
+                await LoadDataAsync();
+                ResetForm();
+            }
+            else
+            {
+                Snackbar.Add("Failed to delete bar. It may be referenced by other records.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error deleting bar: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void ResetForm()
+    {
+        bar = new BarViewModel();
+    }
+}

@@ -17,11 +17,14 @@ namespace WellandPoolLeagueMud.Data.Services
         {
             var teams = await _context.Teams
                 .Include(t => t.Captain)
+                .Include(t => t.Bar)
                 .Include(t => t.PlayerGames)
                 .Select(t => new TeamViewModel
                 {
                     TeamId = t.TeamId,
                     TeamName = t.TeamName,
+                    BarId = t.BarId,
+                    BarName = t.Bar != null ? t.Bar.BarName : null,
                     CaptainPlayerId = t.CaptainPlayerId,
                     CaptainName = t.Captain != null ? (string.IsNullOrEmpty(t.Captain.LastName) ? t.Captain.FirstName : $"{t.Captain.FirstName} {t.Captain.LastName}") : null,
                     GamesPlayed = t.PlayerGames.Sum(pg => pg.Wins + pg.Losses),
@@ -35,9 +38,7 @@ namespace WellandPoolLeagueMud.Data.Services
 
             foreach (var team in teams)
             {
-                // CORRECTED LOGIC: Use WinningTeamId to determine weekly record
                 team.WeeksWon = allSchedules.Count(s => s.WinningTeamId == team.TeamId);
-
                 team.WeeksLost = allSchedules.Count(s =>
                     (s.HomeTeamId == team.TeamId || s.AwayTeamId == team.TeamId) &&
                     s.WinningTeamId != team.TeamId);
@@ -50,21 +51,33 @@ namespace WellandPoolLeagueMud.Data.Services
         {
             var team = await _context.Teams
                 .Include(t => t.Captain)
+                .Include(t => t.Bar)
                 .Include(t => t.PlayerGames)
                 .FirstOrDefaultAsync(t => t.TeamId == id);
 
             if (team == null) return null;
 
-            return new TeamViewModel
+            var viewModel = new TeamViewModel
             {
                 TeamId = team.TeamId,
                 TeamName = team.TeamName,
+                BarId = team.BarId,
+                BarName = team.Bar != null ? team.Bar.BarName : null,
                 CaptainPlayerId = team.CaptainPlayerId,
                 CaptainName = team.Captain != null ? (string.IsNullOrEmpty(team.Captain.LastName) ? team.Captain.FirstName : $"{team.Captain.FirstName} {team.Captain.LastName}") : null,
                 GamesPlayed = team.PlayerGames.Sum(pg => pg.Wins + pg.Losses),
                 GamesWon = team.PlayerGames.Sum(pg => pg.Wins),
                 GamesLost = team.PlayerGames.Sum(pg => pg.Losses)
             };
+
+            var allSchedules = await _context.Schedules
+                .Where(s => s.IsComplete && (s.HomeTeamId == id || s.AwayTeamId == id))
+                .ToListAsync();
+
+            viewModel.WeeksWon = allSchedules.Count(s => s.WinningTeamId == id);
+            viewModel.WeeksLost = allSchedules.Count(s => s.WinningTeamId != id);
+
+            return viewModel;
         }
 
         public async Task<TeamViewModel> CreateTeamAsync(TeamViewModel teamVM)
@@ -72,14 +85,14 @@ namespace WellandPoolLeagueMud.Data.Services
             var team = new Team
             {
                 TeamName = teamVM.TeamName,
-                CaptainPlayerId = teamVM.CaptainPlayerId
+                CaptainPlayerId = teamVM.CaptainPlayerId,
+                BarId = teamVM.BarId
             };
 
             _context.Teams.Add(team);
             await _context.SaveChangesAsync();
 
-            teamVM.TeamId = team.TeamId;
-            return teamVM;
+            return (await GetTeamByIdAsync(team.TeamId))!;
         }
 
         public async Task<TeamViewModel?> UpdateTeamAsync(TeamViewModel teamVM)
@@ -89,9 +102,11 @@ namespace WellandPoolLeagueMud.Data.Services
 
             team.TeamName = teamVM.TeamName;
             team.CaptainPlayerId = teamVM.CaptainPlayerId;
+            team.BarId = teamVM.BarId;
 
             await _context.SaveChangesAsync();
-            return teamVM;
+
+            return await GetTeamByIdAsync(team.TeamId);
         }
 
         public async Task<bool> DeleteTeamAsync(int id)

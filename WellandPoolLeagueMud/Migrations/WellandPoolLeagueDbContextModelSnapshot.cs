@@ -22,6 +22,49 @@ namespace WellandPoolLeagueMud.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("WellandPoolLeagueMud.Data.Models.Bar", b =>
+                {
+                    b.Property<int>("BarId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BarId"));
+
+                    b.Property<string>("Address")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("BarName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<DateTime>("ModifiedDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<int>("NumberOfTables")
+                        .HasColumnType("int");
+
+                    b.HasKey("BarId");
+
+                    b.HasIndex("BarName")
+                        .IsUnique();
+
+                    b.ToTable("WPLMud_Bars", (string)null);
+                });
+
             modelBuilder.Entity("WellandPoolLeagueMud.Data.Models.Player", b =>
                 {
                     b.Property<int>("PlayerId")
@@ -144,6 +187,9 @@ namespace WellandPoolLeagueMud.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TeamId"));
 
+                    b.Property<int?>("BarId")
+                        .HasColumnType("int");
+
                     b.Property<int?>("CaptainPlayerId")
                         .HasColumnType("int");
 
@@ -153,6 +199,8 @@ namespace WellandPoolLeagueMud.Migrations
                         .HasColumnType("nvarchar(100)");
 
                     b.HasKey("TeamId");
+
+                    b.HasIndex("BarId");
 
                     b.HasIndex("CaptainPlayerId");
 
@@ -266,10 +314,17 @@ namespace WellandPoolLeagueMud.Migrations
 
             modelBuilder.Entity("WellandPoolLeagueMud.Data.Models.Team", b =>
                 {
+                    b.HasOne("WellandPoolLeagueMud.Data.Models.Bar", "Bar")
+                        .WithMany("Teams")
+                        .HasForeignKey("BarId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("WellandPoolLeagueMud.Data.Models.Player", "Captain")
                         .WithMany("CaptainedTeams")
                         .HasForeignKey("CaptainPlayerId")
                         .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Bar");
 
                     b.Navigation("Captain");
                 });
@@ -282,6 +337,11 @@ namespace WellandPoolLeagueMud.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Player");
+                });
+
+            modelBuilder.Entity("WellandPoolLeagueMud.Data.Models.Bar", b =>
+                {
+                    b.Navigation("Teams");
                 });
 
             modelBuilder.Entity("WellandPoolLeagueMud.Data.Models.Player", b =>
