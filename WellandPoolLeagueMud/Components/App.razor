@@ -1,4 +1,9 @@
-﻿<!DOCTYPE html>
+﻿@using Microsoft.AspNetCore.Components.Routing
+@inject IJSRuntime JS
+@inject NavigationManager NavigationManager
+@implements IDisposable
+
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -6,16 +11,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base href="/" />
 
-    <!-- Google Fonts for the theme -->
     <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
 
-    <!-- Load MudBlazor styles FIRST -->
     <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
 
-    <!-- Load your custom styles LAST to ensure they override the defaults -->
     <link href="css/app.css" rel="stylesheet" />
 
     <link rel="icon" type="image/ico" href="favicon.png" />
+
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-DN04LZXWRS"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-DN04LZXWRS');
+    </script>
+
     <HeadOutlet @rendermode="InteractiveServer" />
 </head>
 
@@ -27,3 +38,22 @@
 
 </html>
 
+@code {
+    protected override void OnInitialized()
+    {
+        NavigationManager.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object sender, LocationChangedEventArgs e)
+    {
+        var relativeUri = new Uri(e.Location).PathAndQuery;
+
+        // Use JS interop to send a page_view event to Google Analytics
+        JS.InvokeVoidAsync("gtag", "config", "G-DN04LZXWRS", new { page_path = relativeUri });
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
+    }
+}
