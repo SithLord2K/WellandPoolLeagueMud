@@ -1,5 +1,5 @@
 ﻿using Auth0.ManagementApi.Models;
-using WellandPoolLeagueMud.ViewModels;
+using WellandPoolLeagueMud.Data.ViewModels;
 
 public interface IAuth0ManagementService
 {

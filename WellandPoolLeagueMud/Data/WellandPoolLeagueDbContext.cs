@@ -25,6 +25,7 @@ namespace WellandPoolLeagueMud.Data
             modelBuilder.Entity<Schedule>().ToTable("WPLMud_Schedules");
             modelBuilder.Entity<UserProfile>().ToTable("WPLMud_UserProfiles");
 
+            // Existing configurations...
             modelBuilder.Entity<Team>()
                 .HasMany(t => t.Players)
                 .WithOne(p => p.Team)
@@ -67,6 +68,16 @@ namespace WellandPoolLeagueMud.Data
                 .HasForeignKey(s => s.WinningTeamId)
                 .OnDelete(DeleteBehavior.SetNull);
 
+            // --- FIX: Correctly configure the optional 1-to-1 relationship ---
+            // This explicitly tells EF Core how Player and UserProfile are linked.
+            modelBuilder.Entity<Player>()
+                .HasOne(p => p.UserProfile)
+                .WithOne(up => up.Player)
+                .HasForeignKey<UserProfile>(up => up.PlayerId)
+                .IsRequired(false) // This makes the relationship optional
+                .OnDelete(DeleteBehavior.SetNull); // When a Player is deleted, set UserProfile.PlayerId to null
+
+            // Existing indexes...
             modelBuilder.Entity<Player>()
                 .HasIndex(p => new { p.FirstName, p.LastName });
 
@@ -82,6 +93,11 @@ namespace WellandPoolLeagueMud.Data
 
             modelBuilder.Entity<UserProfile>()
                 .HasIndex(p => p.Auth0UserId)
+                .IsUnique();
+
+            // --- FIX: Make the PlayerId index unique to enforce the 1-to-1 relationship ---
+            modelBuilder.Entity<UserProfile>()
+                .HasIndex(up => up.PlayerId)
                 .IsUnique();
         }
     }

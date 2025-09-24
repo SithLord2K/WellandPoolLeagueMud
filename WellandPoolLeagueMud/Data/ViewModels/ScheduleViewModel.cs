@@ -11,15 +11,17 @@ namespace WellandPoolLeagueMud.Data.ViewModels
         public int WeekNumber { get; set; }
 
         [Required(ErrorMessage = "Home Team is required")]
+        [Range(1, int.MaxValue, ErrorMessage = "Home Team is required")]
         public int HomeTeamId { get; set; }
         public string? HomeTeamName { get; set; }
 
         [Required(ErrorMessage = "Away Team is required")]
+        [Range(1, int.MaxValue, ErrorMessage = "Away Team is required")]
         public int AwayTeamId { get; set; }
         public string? AwayTeamName { get; set; }
 
         [Required(ErrorMessage = "Game Date is required")]
-        public DateTime GameDate { get; set; }
+        public DateTime? GameDate { get; set; }
 
         public int? WinningTeamId { get; set; }
         public string? WinningTeamName { get; set; }
@@ -31,5 +33,22 @@ namespace WellandPoolLeagueMud.Data.ViewModels
 
         public string GameResult => IsComplete ?
             (WinningTeamName ?? "Unknown") : "Not Played";
+
+        public ScheduleViewModel() { }
+
+        public ScheduleViewModel(ScheduleViewModel other)
+        {
+            this.ScheduleId = other.ScheduleId;
+            this.WeekNumber = other.WeekNumber;
+            this.HomeTeamId = other.HomeTeamId;
+            this.HomeTeamName = other.HomeTeamName;
+            this.AwayTeamId = other.AwayTeamId;
+            this.AwayTeamName = other.AwayTeamName;
+            this.GameDate = other.GameDate;
+            this.WinningTeamId = other.WinningTeamId;
+            this.WinningTeamName = other.WinningTeamName;
+            this.IsComplete = other.IsComplete;
+            this.Notes = other.Notes;
+        }
     }
 }

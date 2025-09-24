@@ -1,0 +1,203 @@
+﻿@using MudBlazor
+@using WellandPoolLeagueMud.Data.Models
+@using WellandPoolLeagueMud.Data.Services
+@inject IPlayerUserService PlayerUserService
+@inject ILogger<LinkPlayerDialog> Logger
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Link Player to @UserEmail</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_isProcessing)
+        {
+            <div class="d-flex align-center justify-center pa-4">
+                <MudProgressCircular Indeterminate="true" Size="Size.Medium" />
+                <MudText Class="ml-3">Processing...</MudText>
+            </div>
+        }
+        else
+        {
+            <div class="mb-3">
+                <MudTextField @bind-Value="SearchTerm"
+                              Label="Search Players"
+                              Variant="Variant.Outlined"
+                              Placeholder="Type player name..."
+                              Immediate="true"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              Clearable="true" />
+            </div>
+
+            @if (_filteredPlayers.Any())
+            {
+                <MudPaper Class="pa-2" Style="max-height: 400px; overflow-y: auto;">
+                    <MudList Clickable="true" Dense="true" T="Player">
+                        @foreach (var player in _filteredPlayers.Take(20))
+                        {
+                            <MudListItem T="Player" OnClick="@(() => SelectPlayer(player))"
+                                         Class="@(GetSelectedClass(player))">
+                                <div class="d-flex justify-space-between align-center">
+                                    <div>
+                                        <MudText Typo="Typo.body1">
+                                            @player.FirstName @player.LastName
+                                        </MudText>
+                                        @if (player.Team != null)
+                                        {
+                                            <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                                Team: @player.Team.TeamName
+                                            </MudText>
+                                        }
+                                    </div>
+                                    @if (_selectedPlayer?.PlayerId == player.PlayerId)
+                                    {
+                                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" />
+                                    }
+                                </div>
+                            </MudListItem>
+                            <MudDivider />
+                        }
+                    </MudList>
+
+                    @if (_filteredPlayers.Count > 20)
+                    {
+                        <MudText Typo="Typo.caption" Class="pa-2 mud-text-secondary">
+                            Showing first 20 of @_filteredPlayers.Count players. Use search to narrow results.
+                        </MudText>
+                    }
+                </MudPaper>
+            }
+            else if (!string.IsNullOrEmpty(SearchTerm))
+            {
+                <MudAlert Severity="Severity.Info">
+                    No players found matching "@SearchTerm"
+                </MudAlert>
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Warning">There are no unlinked players available.</MudAlert>
+            }
+
+            @if (_selectedPlayer != null)
+            {
+                <MudPaper Class="pa-3 mt-3" Elevation="2">
+                    <MudText Typo="Typo.subtitle1" GutterBottom="true">Selected Player:</MudText>
+                    <MudText><strong>@_selectedPlayer.FirstName @_selectedPlayer.LastName</strong></MudText>
+                    @if (_selectedPlayer.Team != null)
+                    {
+                        <MudText>Team: @_selectedPlayer.Team.TeamName</MudText>
+                    }
+                </MudPaper>
+            }
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Disabled="_isProcessing">Cancel</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="LinkPlayer"
+                   Disabled="@(_selectedPlayer == null || _isProcessing)">
+            @if (_isProcessing)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Link Player
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public List<Player> UnlinkedPlayers { get; set; } = new();
+    [Parameter] public string UserEmail { get; set; } = string.Empty;
+    [Parameter] public string Auth0UserId { get; set; } = string.Empty;
+
+    private List<Player> _filteredPlayers = new();
+    private Player? _selectedPlayer;
+    private bool _isProcessing = false;
+    private string _searchTerm = string.Empty;
+
+    public string SearchTerm
+    {
+        get => _searchTerm;
+        set
+        {
+            if (_searchTerm == value) return;
+            _searchTerm = value;
+            FilterPlayers();
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        // Initial filter/sort when the component loads
+        FilterPlayers();
+    }
+
+    private void FilterPlayers()
+    {
+        if (string.IsNullOrWhiteSpace(_searchTerm))
+        {
+            _filteredPlayers = UnlinkedPlayers.OrderBy(p => p.FirstName).ThenBy(p => p.LastName).ToList();
+        }
+        else
+        {
+            _filteredPlayers = UnlinkedPlayers
+                .Where(p => $"{p.FirstName} {p.LastName}".Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                            (p.Team?.TeamName?.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) == true))
+                .OrderBy(p => p.FirstName)
+                .ThenBy(p => p.LastName)
+                .ToList();
+        }
+    }
+
+    private void SelectPlayer(Player player)
+    {
+        // Allow toggling selection
+        _selectedPlayer = _selectedPlayer?.PlayerId == player.PlayerId ? null : player;
+    }
+
+    private string GetSelectedClass(Player player)
+    {
+        return _selectedPlayer?.PlayerId == player.PlayerId ? "mud-selected-item" : "";
+    }
+
+    private async Task LinkPlayer()
+    {
+        if (_selectedPlayer == null || string.IsNullOrEmpty(Auth0UserId))
+            return;
+
+        _isProcessing = true;
+        try
+        {
+            var success = await PlayerUserService.LinkUserToPlayerAsync(Auth0UserId, _selectedPlayer.PlayerId);
+            if (success)
+            {
+                MudDialog.Close(DialogResult.Ok(true)); // Return true for success
+            }
+            else
+            {
+                Logger.LogWarning("Failed to link player {PlayerId} to user {UserId}", _selectedPlayer.PlayerId, Auth0UserId);
+                MudDialog.Close(DialogResult.Ok(false)); // Return false for failure
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error linking player {PlayerId} to user {UserId}", _selectedPlayer.PlayerId, Auth0UserId);
+            MudDialog.Close(DialogResult.Cancel());
+        }
+        finally
+        {
+            _isProcessing = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}
+
+<style>
+    .mud-selected-item {
+        background-color: var(--mud-palette-action-default-hover) !important;
+    }
+</style>

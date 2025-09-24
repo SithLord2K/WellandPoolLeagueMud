@@ -71,7 +71,7 @@ namespace WellandPoolLeagueMud.Data.Services
                 WeekNumber = scheduleVM.WeekNumber,
                 HomeTeamId = scheduleVM.HomeTeamId,
                 AwayTeamId = scheduleVM.AwayTeamId,
-                GameDate = scheduleVM.GameDate,
+                GameDate = (DateTime)scheduleVM.GameDate!,
                 WinningTeamId = scheduleVM.WinningTeamId,
                 IsComplete = scheduleVM.IsComplete,
                 Notes = scheduleVM.Notes
@@ -92,7 +92,7 @@ namespace WellandPoolLeagueMud.Data.Services
             schedule.WeekNumber = scheduleVM.WeekNumber;
             schedule.HomeTeamId = scheduleVM.HomeTeamId;
             schedule.AwayTeamId = scheduleVM.AwayTeamId;
-            schedule.GameDate = scheduleVM.GameDate;
+            schedule.GameDate = (DateTime)scheduleVM.GameDate!;
             schedule.WinningTeamId = scheduleVM.WinningTeamId;
             schedule.IsComplete = scheduleVM.IsComplete;
             schedule.Notes = scheduleVM.Notes;

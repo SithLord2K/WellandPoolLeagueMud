@@ -91,21 +91,23 @@
     }
 
 .mud-snackbar {
-    background-image: url('/css/wood-grain.png') !important;
-    background-size: cover !important;
-    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    background-color: var(--mud-palette-black) !important;
+    border: 2px solid var(--mud-palette-tertiary) !important;
     box-shadow: 0 4px 15px rgba(0,0,0,0.6) !important;
     border-radius: var(--mud-layout-default-border-radius) !important;
 }
 
     .mud-snackbar .mud-snackbar-content .mud-snackbar-message {
-        color: var(--mud-palette-text-primary) !important;
-        text-shadow: 0 0 3px rgba(0,0,0,0.5);
+        color: var(--mud-palette-tertiary) !important;
     }
 
     .mud-snackbar .mud-snackbar-icon {
         color: var(--mud-palette-tertiary) !important;
     }
+
+.mud-snackbar-location-top-right {
+    top: 70px !important;
+}
 
 #main-content-paper .mud-table {
     background-color: rgba(0, 0, 0, 0.25) !important;

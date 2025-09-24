@@ -24,7 +24,7 @@ else
                 <MudAvatar Color="Color.Primary" Style="height:150px; width:150px; font-size:4rem;">
                     @if (!string.IsNullOrEmpty(_picture))
                     {
-                        <MudImage Src="@_picture" Fluid="true" />
+                        <MudImage Src="@_picture" Alt="Profile Picture" />
                     }
                     else
                     {
@@ -32,7 +32,14 @@ else
                     }
                 </MudAvatar>
                 <MudText Typo="Typo.h5" Class="mt-4">@_userProfile.FirstName @_userProfile.LastName</MudText>
-                <MudText Typo="Typo.body1" Class="mud-text-secondary">@_email</MudText>
+                @if (!string.IsNullOrEmpty(_email))
+                {
+                    <MudText Typo="Typo.body1" Class="mud-text-secondary">@_email</MudText>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body1" Class="mud-text-secondary">@(_nickname ?? _userName ?? "User")</MudText>
+                }
 
                 @if (_registrationDateTime.HasValue)
                 {
@@ -45,6 +52,8 @@ else
                         <MudChip T="string" Color="Color.Primary" Size="Size.Small">@role</MudChip>
                     }
                 </div>
+
+
             </MudPaper>
         </MudItem>
 
@@ -106,6 +115,8 @@ else
     private string? _initials;
     private DateTime? _registrationDateTime;
     private List<string> _roles = new();
+    private string? _nickname;
+    private string? _userName;
 
     protected override async Task OnInitializedAsync()
     {
@@ -115,21 +126,68 @@ else
         if (user.Identity is { IsAuthenticated: true })
         {
             _userProfile = await UserProfileService.GetOrCreateUserProfileAsync(user);
-            _picture = user.Claims.FirstOrDefault(c => c.Type == "picture")?.Value;
 
-            // This line is now corrected to look for your custom claim
-            _email = user.FindFirst("https://wpl.codersden.com/email")?.Value;
+            // Try multiple possible picture claim types
+            _picture = user.Claims.FirstOrDefault(c => c.Type == "picture")?.Value
+                      ?? user.Claims.FirstOrDefault(c => c.Type == "https://wpl.codersden.com/picture")?.Value
+                      ?? user.Claims.FirstOrDefault(c => c.Type.Contains("picture"))?.Value
+                      ?? user.Claims.FirstOrDefault(c => c.Type == "avatar")?.Value;
 
-            if (!string.IsNullOrEmpty(_userProfile?.FirstName))
+            // Try multiple possible email claim types (Google OAuth2 specific)
+            _email = user.FindFirst("https://wpl.codersden.com/email")?.Value
+                    ?? user.FindFirst(ClaimTypes.Email)?.Value
+                    ?? user.FindFirst("email")?.Value
+                    ?? user.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress")?.Value
+                    ?? user.FindFirst("sub")?.Value
+                    ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            // Generate initials more safely
+            if (!string.IsNullOrEmpty(_userProfile?.FirstName) && !string.IsNullOrEmpty(_userProfile?.LastName))
             {
-                _initials = _userProfile.FirstName.Substring(0, 1).ToUpper();
+                _initials = $"{_userProfile.FirstName[0]}{_userProfile.LastName[0]}".ToUpper();
+            }
+            else if (!string.IsNullOrEmpty(_userProfile?.FirstName))
+            {
+                _initials = _userProfile.FirstName[0].ToString().ToUpper();
+            }
+            else if (!string.IsNullOrEmpty(_email))
+            {
+                _initials = _email[0].ToString().ToUpper();
+            }
+            else
+            {
+                _initials = "U"; // Default to "U" for User
             }
 
-            var registrationDateClaim = user.FindFirst("https://wpl.codersden.com/created_at")?.Value;
+            var registrationDateClaim = user.FindFirst("https://wpl.codersden.com/created_at")?.Value
+                                       ?? user.FindFirst("created_at")?.Value
+                                       ?? user.FindFirst("iat")?.Value; // issued at time
+
             if (!string.IsNullOrEmpty(registrationDateClaim))
             {
-                _registrationDateTime = DateTime.Parse(registrationDateClaim, null, System.Globalization.DateTimeStyles.RoundtripKind);
+                try
+                {
+                    // Try parsing as ISO string first
+                    if (DateTime.TryParse(registrationDateClaim, null, System.Globalization.DateTimeStyles.RoundtripKind, out var parsedDate))
+                    {
+                        _registrationDateTime = parsedDate;
+                    }
+                    // Try parsing as Unix timestamp
+                    else if (long.TryParse(registrationDateClaim, out var unixTimestamp))
+                    {
+                        _registrationDateTime = DateTimeOffset.FromUnixTimeSeconds(unixTimestamp).DateTime;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Log the error or handle it gracefully
+                    Console.WriteLine($"Error parsing registration date: {ex.Message}");
+                }
             }
+
+            // Store nickname and name for display fallback
+            _nickname = user.FindFirst("nickname")?.Value;
+            _userName = user.FindFirst("name")?.Value;
 
             _roles = user.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
         }

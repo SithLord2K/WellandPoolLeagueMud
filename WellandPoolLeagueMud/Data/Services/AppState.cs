@@ -1,6 +1,6 @@
 ﻿using System.Security.Claims;
 
-namespace WellandPoolLeagueMud.Services;
+namespace WellandPoolLeagueMud.Data.Services;
 
 public class AppState
 {

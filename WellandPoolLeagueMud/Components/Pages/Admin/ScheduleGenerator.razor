@@ -1,0 +1,307 @@
+﻿@page "/admin/schedule-generator"
+@using WellandPoolLeagueMud.Data.ViewModels
+@using WellandPoolLeagueMud.Data.Services
+@inject IScheduleGeneratorService ScheduleGeneratorService
+@inject ITeamService TeamService
+@inject ISnackbar Snackbar
+@inject ILogger<ScheduleGenerator> Logger
+@attribute [Authorize(Roles = "Super_User")]
+
+<PageTitle>Schedule Generator</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">
+    <MudIcon Icon="@Icons.Material.Filled.Schedule" Class="mr-2" />
+    Pool League Schedule Generator
+</MudText>
+
+@if (_isLoading)
+{
+    <MudProgressCircular Indeterminate="true" />
+    <MudText Class="mt-2">Loading teams...</MudText>
+}
+else if (_isLoadingError)
+{
+    <MudAlert Severity="Severity.Error">
+        <strong>Failed to load page data.</strong>
+        <br />
+        @_errorMessage
+    </MudAlert>
+}
+else
+{
+    <MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="mt-4">
+        <MudPaper Class="pa-6" Elevation="2">
+            @if (!_scheduleGenerated)
+            {
+                <MudGrid>
+                    <MudItem xs="12" md="6">
+                        <MudCard>
+                            <MudCardHeader>
+                                <CardHeaderContent>
+                                    <MudText Typo="Typo.h6">Generation Settings</MudText>
+                                </CardHeaderContent>
+                            </MudCardHeader>
+                            <MudCardContent>
+                                <MudDatePicker @bind-Date="_startDate" Label="Start Date" Required="true" Class="mb-3" />
+                                <MudSelect T="DayOfWeek" @bind-Value="_gameDay" Label="Game Day" Required="true" Class="mb-3">
+                                    @foreach (DayOfWeek day in Enum.GetValues(typeof(DayOfWeek)))
+                                    {
+                                        <MudSelectItem T="DayOfWeek" Value="day">@day.ToString()</MudSelectItem>
+                                    }
+                                </MudSelect>
+                                <MudSelect T="ScheduleType" @bind-Value="_scheduleType" Label="Schedule Type" Required="true" Class="mb-3">
+                                    <MudSelectItem T="ScheduleType" Value="ScheduleType.DoubleRoundRobin">Double Round Robin</MudSelectItem>
+                                    <MudSelectItem T="ScheduleType" Value="ScheduleType.SingleRoundRobin">Single Round Robin</MudSelectItem>
+                                    <MudSelectItem T="ScheduleType" Value="ScheduleType.Custom">Custom (Specify weeks)</MudSelectItem>
+                                </MudSelect>
+                                @if (_scheduleType == ScheduleType.Custom)
+                                {
+                                    <MudNumericField @bind-Value="_weeksToGenerate" Label="Number of Weeks" Min="1" Max="30" Required="true" Class="mb-3" />
+                                    <MudSwitch T="bool" @bind-Checked="_ensureBalanced" Label="Ensure Balanced Home/Away Games" Color="Color.Primary" />
+                                }
+                            </MudCardContent>
+                        </MudCard>
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudCard>
+                            <MudCardHeader>
+                                <CardHeaderContent>
+                                    <MudText Typo="Typo.h6">Active Teams (@_teams.Count)</MudText>
+                                </CardHeaderContent>
+                            </MudCardHeader>
+                            <MudCardContent>
+                                @if (_teams.Any())
+                                {
+                                    <MudPaper Class="pa-2" Outlined="true" Style="max-height: 200px; overflow-y: auto;">
+                                        @foreach (var team in _teams)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Class="ma-1">@team.TeamName</MudChip>
+                                        }
+                                    </MudPaper>
+                                }
+                                else
+                                {
+                                    <MudAlert Severity="Severity.Warning">No teams found.</MudAlert>
+                                }
+                            </MudCardContent>
+                        </MudCard>
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" StartIcon="@Icons.Material.Filled.AutoAwesome" OnClick="GenerateScheduleAsync" Disabled="_isGenerating || !_teams.Any()" FullWidth="true">
+                            @if (_isGenerating)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                <text>Generating Schedule...</text>
+                            }
+                            else
+                            {
+                                <text>Generate Schedule</text>
+                            }
+                        </MudButton>
+                    </MudItem>
+                </MudGrid>
+            }
+            else
+            {
+                <MudGrid>
+                    <MudItem xs="12">
+                        <MudPaper Class="pa-4 mb-4" Outlined="true">
+                            <MudText Typo="Typo.h6" Class="mb-2">Schedule Preview & Editor</MudText>
+                            @if (_generatedSchedule.Any())
+                            {
+                                <MudText Class="mb-2">
+                                    Generated <strong>@_generatedSchedule.Count games</strong>
+                                    over <strong>@_generatedSchedule.Select(s => s.WeekNumber).Distinct().Count() weeks</strong>.
+                                </MudText>
+                            }
+                            <MudButtonGroup Class="mb-3">
+                                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="GenerateScheduleAsync" Disabled="_isGenerating || _isSaving">Regenerate</MudButton>
+                                <MudButton Variant="Variant.Filled" Color="Color.Success" StartIcon="@Icons.Material.Filled.Save" OnClick="SaveScheduleAsync" Disabled="_isSaving || _isGenerating">
+                                    @if (_isSaving)
+                                    {
+                                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                        <text>Saving...</text>
+                                    }
+                                    else
+                                    {
+                                        <text>Save to Database</text>
+                                    }
+                                </MudButton>
+                                <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Cancel" OnClick="CancelGeneration" Disabled="_isSaving">Cancel</MudButton>
+                            </MudButtonGroup>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudDataGrid T="ScheduleViewModel"
+                                     Items="_generatedSchedule"
+                                     ReadOnly="false"
+                                     EditMode="DataGridEditMode.Cell"
+                                     Dense="true"
+                                     FixedHeader="true"
+                                     Height="600px"
+                                     SortMode="SortMode.Multiple"
+                                     Filterable="true"
+                                     FilterMode="DataGridFilterMode.ColumnFilterRow">
+                            <Columns>
+                                <PropertyColumn Property="x => x.WeekNumber" Title="Week">
+                                    <EditTemplate>
+                                        <MudNumericField @bind-Value="context.Item.WeekNumber" Min="1" />
+                                    </EditTemplate>
+                                </PropertyColumn>
+                                <PropertyColumn Property="x => x.GameDate" Title="Date" Format="ddd, MMM dd">
+                                    <EditTemplate>
+                                        <MudDatePicker Date="context.Item.GameDate" DateChanged="@((d) => context.Item.GameDate = d ?? context.Item.GameDate)" />
+                                    </EditTemplate>
+                                </PropertyColumn>
+                                <PropertyColumn Property="x => x.HomeTeamName" Title="Home Team">
+                                    <EditTemplate>
+                                        <MudSelect T="int" @bind-Value="context.Item.HomeTeamId">
+                                            @foreach (var team in _teams)
+                                            {
+                                                <MudSelectItem T="int" Value="team.TeamId">@team.TeamName</MudSelectItem>
+                                            }
+                                        </MudSelect>
+                                    </EditTemplate>
+                                </PropertyColumn>
+                                <PropertyColumn Property="x => x.AwayTeamName" Title="Away Team">
+                                    <EditTemplate>
+                                        <MudSelect T="int" @bind-Value="context.Item.AwayTeamId">
+                                            @foreach (var team in _teams)
+                                            {
+                                                <MudSelectItem T="int" Value="team.TeamId">@team.TeamName</MudSelectItem>
+                                            }
+                                        </MudSelect>
+                                    </EditTemplate>
+                                </PropertyColumn>
+                                <PropertyColumn Property="x => x.Notes" Title="Notes" />
+                            </Columns>
+                            <PagerContent>
+                                <MudDataGridPager T="ScheduleViewModel" PageSizeOptions="new int[] { 25, 50, 100 }" />
+                            </PagerContent>
+                        </MudDataGrid>
+                    </MudItem>
+                </MudGrid>
+            }
+        </MudPaper>
+    </MudContainer>
+}
+
+
+@code {
+    private bool _isLoading = true;
+    private bool _isLoadingError = false;
+    private string _errorMessage = string.Empty;
+
+    private List<TeamViewModel> _teams = new();
+    private List<ScheduleViewModel> _generatedSchedule = new();
+    private DateTime? _startDate = DateTime.Today.AddDays(7);
+    private DayOfWeek _gameDay = DayOfWeek.Monday;
+    private ScheduleType _scheduleType = ScheduleType.DoubleRoundRobin;
+    private int _weeksToGenerate = 10;
+    private bool _ensureBalanced = true;
+    private bool _scheduleGenerated = false;
+    private bool _isGenerating = false;
+    private bool _isSaving = false;
+    private ScheduleValidationResult? _validationResult;
+
+    public enum ScheduleType
+    {
+        SingleRoundRobin,
+        DoubleRoundRobin,
+        Custom
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _teams = await TeamService.GetAllTeamsAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load teams on schedule generator page.");
+            _errorMessage = ex.Message;
+            _isLoadingError = true;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task GenerateScheduleAsync()
+    {
+        if (_startDate is null)
+        {
+            Snackbar.Add("Please select a valid start date.", Severity.Warning);
+            return;
+        }
+
+        _isGenerating = true;
+        StateHasChanged();
+
+        try
+        {
+            switch (_scheduleType)
+            {
+                case ScheduleType.SingleRoundRobin:
+                    _generatedSchedule = await ScheduleGeneratorService.GenerateSingleRoundRobinScheduleAsync(_startDate.Value, _gameDay);
+                    break;
+                case ScheduleType.DoubleRoundRobin:
+                    _generatedSchedule = await ScheduleGeneratorService.GenerateDoubleRoundRobinScheduleAsync(_startDate.Value, _gameDay);
+                    break;
+                case ScheduleType.Custom:
+                    _generatedSchedule = await ScheduleGeneratorService.GenerateRandomScheduleAsync(_startDate.Value, _weeksToGenerate, _gameDay, _ensureBalanced);
+                    break;
+            }
+
+            if (_generatedSchedule.Any())
+            {
+                _validationResult = await ScheduleGeneratorService.ValidateScheduleAsync(_generatedSchedule);
+                _scheduleGenerated = true;
+                Snackbar.Add("Schedule generated successfully.", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("Could not generate a schedule.", Severity.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error generating schedule.");
+            Snackbar.Add("An error occurred while generating the schedule.", Severity.Error);
+        }
+        finally
+        {
+            _isGenerating = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SaveScheduleAsync()
+    {
+        _isSaving = true;
+        try
+        {
+            var savedCount = await ScheduleGeneratorService.SaveScheduleBatchAsync(_generatedSchedule);
+            Snackbar.Add($"{savedCount} games have been saved.", Severity.Success);
+            CancelGeneration();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving schedule.");
+            Snackbar.Add("An error occurred while saving the schedule.", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void CancelGeneration()
+    {
+        _scheduleGenerated = false;
+        _generatedSchedule.Clear();
+        _validationResult = null;
+    }
+}

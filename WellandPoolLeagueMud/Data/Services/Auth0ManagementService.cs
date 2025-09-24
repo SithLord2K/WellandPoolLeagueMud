@@ -1,8 +1,8 @@
 ﻿using Auth0.ManagementApi.Models;
 using WellandPoolLeagueMud.Data.Services;
-using WellandPoolLeagueMud.ViewModels;
+using WellandPoolLeagueMud.Data.ViewModels;
 
-namespace WellandPoolLeagueMud.Services
+namespace WellandPoolLeagueMud.Data.Services
 {
     public class Auth0ManagementService : IAuth0ManagementService
     {

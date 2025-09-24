@@ -4,6 +4,7 @@
 @using WellandPoolLeagueMud.Data.ViewModels
 @using MudBlazor
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
 @inject IScheduleService ScheduleService
 @inject ITeamService TeamService
 
@@ -23,7 +24,7 @@
                 }
                 else
                 {
-                    <MudForm @ref="form" Model="@schedule" Validation="@(new Func<object, IEnumerable<string>>(ValidateSchedule))">
+                    <MudForm @ref="form" Model="@schedule">
                         <MudGrid>
                             <MudItem xs="12">
                                 <MudSelect T="int"
@@ -41,7 +42,7 @@
                                             var homeTeamName = allTeams.FirstOrDefault(x => x.TeamId == s.HomeTeamId)?.TeamName ?? "N/A";
                                             var awayTeamName = allTeams.FirstOrDefault(x => x.TeamId == s.AwayTeamId)?.TeamName ?? "N/A";
                                             <MudSelectItem T="int" Value="@s.ScheduleId">
-                                                Week @s.WeekNumber - @s.GameDate.ToShortDateString() - @homeTeamName vs @awayTeamName
+                                                Week @s.WeekNumber - @s.GameDate?.ToShortDateString() - @homeTeamName vs @awayTeamName
                                             </MudSelectItem>
                                         }
                                     }
@@ -50,8 +51,7 @@
 
                             <MudItem xs="12" sm="6">
                                 <MudDatePicker Label="Game Date"
-                                               Date="schedule.GameDate"
-                                               DateChanged="@((DateTime? newDate) => schedule.GameDate = newDate ?? DateTime.Today)"
+                                               @bind-Date="schedule.GameDate"
                                                DateFormat="MM/dd/yyyy"
                                                Variant="Variant.Filled"
                                                Required="true"
@@ -153,9 +153,9 @@
                             </MudItem>
 
                             <MudItem xs="12" sm="6">
-                                <MudCheckBox @bind-Value="schedule.IsComplete"
+                                <MudCheckBox T="bool" @bind-Checked="schedule.IsComplete"
                                              Label="Mark as Complete"
-                                             Color="Color.Success"/>
+                                             Color="Color.Success" />
                             </MudItem>
 
                             <MudItem xs="12" Class="d-flex justify-start gap-4 mt-4">
@@ -223,11 +223,11 @@
                         </HeaderContent>
                         <RowTemplate>
                             <MudTd DataLabel="Week">
-                                <MudChip T="string" Color="Color.Default" Size="Size.Small" Variant="Variant.Text">
+                                <MudChip T="string">
                                     Week @context.WeekNumber
                                 </MudChip>
                             </MudTd>
-                            <MudTd DataLabel="Date">@context.GameDate.ToShortDateString()</MudTd>
+                            <MudTd DataLabel="Date">@context.GameDate?.ToShortDateString()</MudTd>
                             <MudTd DataLabel="Home Team">
                                 @if (context.IsComplete && context.WinningTeamId == context.HomeTeamId)
                                 {
@@ -267,7 +267,7 @@
                                         Complete
                                     </MudChip>
                                 }
-                                else if (context.GameDate.Date < DateTime.Today)
+                                else if (context.GameDate?.Date < DateTime.Today)
                                 {
                                     <MudChip T="string" Color="Color.Warning" Size="Size.Small" Variant="Variant.Filled">
                                         Pending
@@ -284,7 +284,7 @@
                                 <MudIconButton Icon="@Icons.Material.Filled.Edit"
                                                Color="Color.Primary"
                                                Size="Size.Small"
-                                               OnClick="@(() => LoadSchedule(context.ScheduleId))">Edit Schedule</MudIconButton>
+                                               OnClick="@(() => LoadSchedule(context.ScheduleId))" />
                             </MudTd>
                         </RowTemplate>
                         <NoRecordsContent>
@@ -311,7 +311,6 @@
 
     protected override async Task OnInitializedAsync()
     {
-        schedule.GameDate = DateTime.Today;
         await LoadDataAsync();
     }
 
@@ -333,16 +332,16 @@
         }
     }
 
-    private async Task LoadSchedule(int scheduleId)
+    private void LoadSchedule(int scheduleId)
     {
         selectedScheduleId = scheduleId;
 
         if (scheduleId > 0)
         {
-            var loadedSchedule = await ScheduleService.GetScheduleByIdAsync(scheduleId);
+            var loadedSchedule = allSchedules?.FirstOrDefault(s => s.ScheduleId == scheduleId);
             if (loadedSchedule != null)
             {
-                schedule = loadedSchedule;
+                schedule = new ScheduleViewModel(loadedSchedule);
             }
             else
             {
@@ -354,53 +353,64 @@
         {
             ResetForm();
         }
+        StateHasChanged();
     }
 
     private async Task SaveScheduleAsync()
     {
-        if (form != null)
-        {
-            await form.Validate();
-            if (!form.IsValid) return;
-        }
+        await form.Validate();
+        if (!form.IsValid) return;
 
-        if (schedule.HomeTeamId == schedule.AwayTeamId)
-        {
-            Snackbar.Add("Home Team and Away Team cannot be the same.", Severity.Error);
-            return;
-        }
-
-        // Auto-set IsComplete based on WinningTeamId
         schedule.IsComplete = schedule.WinningTeamId.HasValue;
-
         isProcessing = true;
+
         try
         {
             bool isNewSchedule = selectedScheduleId == 0;
-            ScheduleViewModel? result;
 
             if (isNewSchedule)
             {
-                result = await ScheduleService.CreateScheduleAsync(schedule);
+                var result = await ScheduleService.CreateScheduleAsync(schedule);
                 Snackbar.Add("Schedule added successfully!", Severity.Success);
+
+                var dateToKeep = schedule.GameDate;
+                var weekToKeep = schedule.WeekNumber;
+
+                var parameters = new DialogParameters
+                {
+                    ["Message"] = "Do you want to add another game for this date?",
+                    ["YesText"] = "Yes, Add Another",
+                    ["NoText"] = "No, I'm Done"
+                };
+                var dialog = await DialogService.ShowAsync<MudMessageBox>("Add Another?", parameters);
+                var dialogResult = await dialog.Result;
+
+                await LoadDataAsync();
+
+                if (dialogResult is { Canceled: false, Data: true })
+                {
+                    ResetFormForAnotherEntry(dateToKeep, weekToKeep);
+                }
+                else
+                {
+                    ResetForm();
+                }
             }
             else
             {
                 schedule.ScheduleId = selectedScheduleId;
-                result = await ScheduleService.UpdateScheduleAsync(schedule);
+                var result = await ScheduleService.UpdateScheduleAsync(schedule);
                 if (result != null)
                 {
                     Snackbar.Add("Schedule updated successfully!", Severity.Success);
+                    await LoadDataAsync();
+                    ResetForm();
                 }
                 else
                 {
                     Snackbar.Add("Schedule not found or update failed", Severity.Error);
-                    return;
                 }
             }
-
-            await LoadDataAsync();
-            ResetForm();
         }
         catch (Exception ex)
         {
@@ -443,28 +453,19 @@
 
     private void ResetForm()
     {
-        schedule = new ScheduleViewModel { GameDate = DateTime.Today, WeekNumber = 1 };
+        schedule = new ScheduleViewModel();
         selectedScheduleId = 0;
+        StateHasChanged();
     }
 
-    private IEnumerable<string> ValidateSchedule(object model)
+    private void ResetFormForAnotherEntry(DateTime? gameDate, int weekNumber)
     {
-        var schedule = model as ScheduleViewModel;
-        if (schedule == null) yield break;
-
-        if (schedule.WeekNumber < 1 || schedule.WeekNumber > 52)
-            yield return "Week number must be between 1 and 52";
-
-        if (schedule.HomeTeamId <= 0)
-            yield return "Home team is required";
-
-        if (schedule.AwayTeamId <= 0)
-            yield return "Away team is required";
-
-        if (schedule.HomeTeamId == schedule.AwayTeamId)
-            yield return "Home team and away team cannot be the same";
-
-        if (schedule.GameDate == default(DateTime))
-            yield return "Game date is required";
+        schedule = new ScheduleViewModel
+        {
+            GameDate = gameDate,
+            WeekNumber = weekNumber
+        };
+        selectedScheduleId = 0;
+        StateHasChanged();
     }
 }

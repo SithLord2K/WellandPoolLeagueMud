@@ -1,4 +1,4 @@
-﻿namespace WellandPoolLeagueMud.ViewModels
+﻿namespace WellandPoolLeagueMud.Data.ViewModels
 {
     public class RoleViewModel
     {

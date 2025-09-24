@@ -340,7 +340,7 @@
                 var message = isNewPlayer ? "Player created successfully!" : "Player updated successfully!";
                 Snackbar.Add(message, Severity.Success);
                 await LoadDataAsync();
-                player = result; // Update with the returned data
+                ResetForm();
                 await LoadTeamRoster();
             }
             else

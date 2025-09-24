@@ -30,6 +30,9 @@ namespace WellandPoolLeagueMud.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PlayerId"));
 
+                    b.Property<string>("Auth0UserId")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("FirstName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -191,10 +194,17 @@ namespace WellandPoolLeagueMud.Migrations
                     b.Property<string>("PhoneNumber")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("PlayerId")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Auth0UserId")
                         .IsUnique();
+
+                    b.HasIndex("PlayerId")
+                        .IsUnique()
+                        .HasFilter("[PlayerId] IS NOT NULL");
 
                     b.ToTable("WPLMud_UserProfiles", (string)null);
                 });
@@ -264,11 +274,23 @@ namespace WellandPoolLeagueMud.Migrations
                     b.Navigation("Captain");
                 });
 
+            modelBuilder.Entity("WellandPoolLeagueMud.Data.Models.UserProfile", b =>
+                {
+                    b.HasOne("WellandPoolLeagueMud.Data.Models.Player", "Player")
+                        .WithOne("UserProfile")
+                        .HasForeignKey("WellandPoolLeagueMud.Data.Models.UserProfile", "PlayerId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Player");
+                });
+
             modelBuilder.Entity("WellandPoolLeagueMud.Data.Models.Player", b =>
                 {
                     b.Navigation("CaptainedTeams");
 
                     b.Navigation("PlayerGames");
+
+                    b.Navigation("UserProfile");
                 });
 
             modelBuilder.Entity("WellandPoolLeagueMud.Data.Models.Team", b =>

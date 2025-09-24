@@ -2,15 +2,16 @@
 @implements IDisposable
 @using WellandPoolLeagueMud.Components.Buttons
 @using WellandPoolLeagueMud.Components.Themes
-@using WellandPoolLeagueMud.Services
+@using WellandPoolLeagueMud.Data.Services
+@using System.Security.Claims
 @inject ISnackbar Snackbar
 @inject NavigationManager NavManager
 @inject AppState AppState
 
 <MudThemeProvider Theme="_poolLeagueTheme" @bind-IsDarkMode="@useDarkMode" />
-<MudPopoverProvider />
 <MudDialogProvider />
-<MudSnackbarProvider />
+<MudPopoverProvider />
+<MudSnackbarProvider Position="Defaults.Classes.Position.BottomRight" />
 
 <MudLayout>
     <MudAppBar Elevation="6">
@@ -24,31 +25,56 @@
         {
             <MudText Typo="Typo.subtitle1">Hello, @AppState.Username (@AppState.Roles.FirstOrDefault())</MudText>
 
-            @* For logged-in users, show a single dropdown menu *@
-            <MudMenu Icon="@Icons.Material.Filled.Person" Color="Color.Inherit" Dense="true" AnchorOrigin="Origin.BottomRight">
-                <MudMenuItem Href="/profile">My Profile</MudMenuItem>
-                <MudMenuItem>
-                    @* The LoginButton will show "Log Out" here *@
-                    <LoginButton />
-                </MudMenuItem>
+            <MudMenu AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                <ActivatorContent>
+                    <MudAvatar Size="Size.Small" Color="Color.Primary" Style="margin-left: 8px; cursor: pointer;">
+                        @if (!string.IsNullOrEmpty(_userPicture))
+                        {
+                            <MudImage Src="@_userPicture" Alt="User Avatar" />
+                        }
+                        else
+                        {
+                            @_userInitials
+                        }
+                    </MudAvatar>
+                </ActivatorContent>
+                <ChildContent>
+                    <MudMenuItem Href="/profile" Icon="@Icons.Material.Filled.Person">My Profile</MudMenuItem>
+                    <MudDivider />
+                    <MudMenuItem>
+                        <LoginButton />
+                    </MudMenuItem>
+                </ChildContent>
             </MudMenu>
         }
         else if (AppState.IsLoggedIn && AppState.Roles.FirstOrDefault() == null)
         {
             <MudText Typo="Typo.subtitle1">Hello, @AppState.Username (No Role)</MudText>
 
-            @* For logged-in users, show a single dropdown menu *@
-            <MudMenu Icon="@Icons.Material.Filled.Person" Color="Color.Inherit" Dense="true" AnchorOrigin="Origin.BottomRight">
-                <MudMenuItem Href="/profile">My Profile</MudMenuItem>
-                <MudMenuItem>
-                    @* The LoginButton will show "Log Out" here *@
-                    <LoginButton />
-                </MudMenuItem>
+            <MudMenu AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                <ActivatorContent>
+                    <MudAvatar Size="Size.Small" Color="Color.Primary" Style="margin-left: 8px; cursor: pointer;">
+                        @if (!string.IsNullOrEmpty(_userPicture))
+                        {
+                            <MudImage Src="@_userPicture" Alt="User Avatar" />
+                        }
+                        else
+                        {
+                            @_userInitials
+                        }
+                    </MudAvatar>
+                </ActivatorContent>
+                <ChildContent>
+                    <MudMenuItem Href="/profile" Icon="@Icons.Material.Filled.Person">My Profile</MudMenuItem>
+                    <MudDivider />
+                    <MudMenuItem>
+                        <LoginButton />
+                    </MudMenuItem>
+                </ChildContent>
             </MudMenu>
         }
         else
         {
-            @* For logged-out users, show the Login button *@
             <LoginButton />
         }
     </MudAppBar>
@@ -69,15 +95,6 @@
         </MudPaper>
     </MudMainContent>
     <MudAppBar Bottom="true" Elevation="6" Dense="true">
-        <MudSpacer />
-        <MudButton Href="https://www.buymeacoffee.com/wileysoftware"
-                   Target="_blank"
-                   Variant="Variant.Outlined"
-                   Color="Color.Inherit"
-                   StartIcon="@Icons.Material.Filled.LocalDrink"
-                   Style="text-transform:none;">
-            Like the work? Buy Me a Beer!
-        </MudButton>
         <MudSpacer />
         <MudText Typo="Typo.caption" Class="text-center">
             &copy; @DateTime.Now.Year Welland Pool League
@@ -106,17 +123,66 @@
     private readonly MudTheme _poolLeagueTheme = new PoolLeagueTheme();
     private bool _drawerOpen = true;
     private bool useDarkMode = true;
+    private string? _userPicture;
+    private string? _userInitials;
 
     protected override async Task OnInitializedAsync()
     {
-        // Subscribe to the state change event
         AppState.OnChange += StateHasChanged;
 
         if (authenticationState is not null)
         {
             var state = await authenticationState;
-            // Set the user in the central state service
             AppState.SetUser(state.User);
+
+            LoadUserAvatarInfo(state.User);
+        }
+    }
+
+    private void LoadUserAvatarInfo(ClaimsPrincipal user)
+    {
+        if (user.Identity is { IsAuthenticated: true })
+        {
+            _userPicture = user.Claims.FirstOrDefault(c => c.Type == "picture")?.Value
+                          ?? user.Claims.FirstOrDefault(c => c.Type == "https://wpl.codersden.com/picture")?.Value
+                          ?? user.Claims.FirstOrDefault(c => c.Type.Contains("picture"))?.Value
+                          ?? user.Claims.FirstOrDefault(c => c.Type == "avatar")?.Value;
+
+            var firstName = user.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname")?.Value
+                           ?? user.FindFirst(ClaimTypes.GivenName)?.Value;
+            var lastName = user.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname")?.Value
+                          ?? user.FindFirst(ClaimTypes.Surname)?.Value;
+            var nickname = user.FindFirst("nickname")?.Value;
+            var name = user.FindFirst("name")?.Value;
+
+            if (!string.IsNullOrEmpty(firstName) && !string.IsNullOrEmpty(lastName))
+            {
+                _userInitials = $"{firstName[0]}{lastName[0]}".ToUpper();
+            }
+            else if (!string.IsNullOrEmpty(firstName))
+            {
+                _userInitials = firstName[0].ToString().ToUpper();
+            }
+            else if (!string.IsNullOrEmpty(nickname))
+            {
+                _userInitials = nickname[0].ToString().ToUpper();
+            }
+            else if (!string.IsNullOrEmpty(name))
+            {
+                var nameParts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                if (nameParts.Length >= 2)
+                {
+                    _userInitials = $"{nameParts[0][0]}{nameParts[1][0]}".ToUpper();
+                }
+                else
+                {
+                    _userInitials = nameParts[0][0].ToString().ToUpper();
+                }
+            }
+            else
+            {
+                _userInitials = "U";
+            }
         }
     }
 
@@ -131,7 +197,6 @@
         _drawerOpen = !_drawerOpen;
     }
 
-    // Unsubscribe from the event when the component is destroyed to prevent memory leaks
     public void Dispose()
     {
         AppState.OnChange -= StateHasChanged;

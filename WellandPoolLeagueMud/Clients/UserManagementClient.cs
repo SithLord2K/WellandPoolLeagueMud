@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Components;
 using System.Net.Http.Json;
-using WellandPoolLeagueMud.ViewModels;
+using WellandPoolLeagueMud.Data.ViewModels;
 
 namespace WellandPoolLeagueMud.Clients;
 

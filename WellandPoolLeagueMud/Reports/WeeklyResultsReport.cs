@@ -2,7 +2,6 @@
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using WellandPoolLeagueMud.Data.ViewModels;
-using WellandPoolLeagueMud.ViewModels;
 
 namespace WellandPoolLeagueMud.Reports;
 

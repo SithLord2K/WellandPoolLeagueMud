@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
+using MudBlazor;
 using MudBlazor.Services;
 using QuestPDF.Fluent;
 using QuestPDF.Infrastructure;
@@ -16,11 +17,9 @@ using WellandPoolLeagueMud.AuthenticationStateSyncer.PersistingRevalidatingAuthe
 using WellandPoolLeagueMud.Clients;
 using WellandPoolLeagueMud.Components;
 using WellandPoolLeagueMud.Data;
-using WellandPoolLeagueMud.Data.Models;
 using WellandPoolLeagueMud.Data.Services;
 using WellandPoolLeagueMud.Handlers;
 using WellandPoolLeagueMud.Reports;
-using WellandPoolLeagueMud.Services;
 
 Log.Logger = new LoggerConfiguration()
     .Enrich.FromLogContext()
@@ -47,6 +46,8 @@ try
     builder.Services.AddScoped<IUserProfileService, UserProfileService>();
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddTransient<CookieForwardingHandler>();
+    builder.Services.AddScoped<IPlayerUserService, PlayerUserService>();
+    builder.Services.AddScoped<IScheduleGeneratorService, ScheduleGeneratorService>();
 
     builder.Services.AddDbContextFactory<WellandPoolLeagueDbContext>(options =>
     {
@@ -111,7 +112,7 @@ try
                 var claimsIdentity = context.Principal?.Identity as ClaimsIdentity;
 
                 var createdAtClaim = token.Claims.FirstOrDefault(c => c.Type == createdAtClaimName);
-                if (createdAtClaim != null && !claimsIdentity.HasClaim(c => c.Type == createdAtClaim.Type))
+                if (createdAtClaim != null && !claimsIdentity!.HasClaim(c => c.Type == createdAtClaim.Type))
                 {
                     claimsIdentity?.AddClaim(new Claim(createdAtClaim.Type, createdAtClaim.Value));
                 }

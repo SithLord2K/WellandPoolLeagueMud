@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace WellandPoolLeagueMud.Data.Models
 {
@@ -20,6 +21,13 @@ namespace WellandPoolLeagueMud.Data.Models
 
         [Phone(ErrorMessage = "Please enter a valid phone number.")]
         public string? PhoneNumber { get; set; }
+
         public DateTime DateCreated { get; set; } = DateTime.UtcNow;
+
+        // Link to Player
+        public int? PlayerId { get; set; }
+
+        [ForeignKey("PlayerId")]
+        public virtual Player? Player { get; set; }
     }
 }
