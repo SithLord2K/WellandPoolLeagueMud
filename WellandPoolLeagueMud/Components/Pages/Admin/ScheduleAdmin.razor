@@ -147,15 +147,14 @@
                             </MudItem>
 
                             <MudItem xs="12" sm="6">
-                                <MudTextField T="string"
-                                              Label="Table #"
-                                              @bind-Value="schedule.Notes"
-                                              Lines="1"
-                                              Variant="Variant.Filled"
-                                              AdornmentIcon="@Icons.Material.Filled.ConfirmationNumber"
-                                              Adornment="Adornment.Start"
-                                              HelperText="Table number is required for 'Park' teams."
-                                              Validation="@(new Func<string, string>(ValidateNotes))" />
+                                <MudNumericField T="int?"
+                                                 Label="Table #"
+                                                 @bind-Value="schedule.TableNumber"
+                                                 Variant="Variant.Filled"
+                                                 AdornmentIcon="@Icons.Material.Filled.ConfirmationNumber"
+                                                 Adornment="Adornment.Start"
+                                                 HelperText="Table number is required for 'Park' teams."
+                                                 Validation="@(new Func<int?, string>(ValidateTableNumber))" />
                             </MudItem>
 
                             <MudItem xs="12" sm="6">
@@ -512,14 +511,14 @@
         }
     }
 
-    private string ValidateNotes(string notes)
+    private string ValidateTableNumber(int? tableNumber)
     {
         if (schedule.HomeTeamId > 0 && allTeams != null)
         {
             var homeTeam = allTeams.FirstOrDefault(t => t.TeamId == schedule.HomeTeamId);
             if (homeTeam != null && homeTeam.TeamName.Contains("Park", StringComparison.OrdinalIgnoreCase))
             {
-                if (string.IsNullOrWhiteSpace(notes))
+                if (!tableNumber.HasValue)
                 {
                     return "Table # is required when the home team is a 'Park' team.";
                 }

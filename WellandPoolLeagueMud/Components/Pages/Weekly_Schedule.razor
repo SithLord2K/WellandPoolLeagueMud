@@ -89,7 +89,7 @@
                                     <MudTh Style="width: 50px; text-align: center;">vs</MudTh>
                                     <MudTh>Away Team</MudTh>
                                     <MudTh Style="width: 80px; text-align: center;">Result</MudTh>
-                                    <MudTh Style="width: 150px;">Table #</MudTh>
+                                    <MudTh Style="width: 150px; text-align: center;">Table #</MudTh>
                                     <MudTh Style="width: 100px; text-align: center;">Status</MudTh>
                                 </HeaderContent>
                                 <RowTemplate>
@@ -140,11 +140,11 @@
                                             <MudIcon Icon="@Icons.Material.Filled.Cancel" Color="Color.Error" />
                                         }
                                     </MudTd>
-                                    <MudTd DataLabel="Table #">
-                                        @if (!string.IsNullOrEmpty(context.Notes))
+                                    <MudTd DataLabel="Table #" Style="align-content: center;">
+                                        @if (context.TableNumber.HasValue)
                                         {
-                                            <MudChip T="string" Color="Color.Tertiary" Size="Size.Small" Variant="Variant.Outlined">
-                                                Table #: @context.Notes
+                                            <MudChip T="string" Color="Color.Info" Size="Size.Small" Variant="Variant.Filled">
+                                                Table#: @context.TableNumber.Value
                                             </MudChip>
                                         }
                                     </MudTd>

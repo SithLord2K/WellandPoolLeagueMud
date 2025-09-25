@@ -30,5 +30,6 @@ namespace WellandPoolLeagueMud.Data.Models
 
         [StringLength(500)]
         public string? Notes { get; set; }
+        public int? TableNumber { get; set; }
     }
 }

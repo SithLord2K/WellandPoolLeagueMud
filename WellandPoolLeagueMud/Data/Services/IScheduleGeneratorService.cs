@@ -9,7 +9,8 @@ namespace WellandPoolLeagueMud.Data.Services
     {
         Task<List<ScheduleViewModel>> GenerateSingleRoundRobinScheduleAsync(DateTime startDate, DayOfWeek gameDay);
         Task<List<ScheduleViewModel>> GenerateDoubleRoundRobinScheduleAsync(DateTime startDate, DayOfWeek gameDay);
-        Task<List<ScheduleViewModel>> GenerateRandomScheduleAsync(DateTime startDate, int weeksToGenerate, DayOfWeek gameDay, bool ensureBalanced);
+        Task<List<ScheduleViewModel>> GenerateRandomScheduleAsync(DateTime startDate, int weeksToGenerate, DayOfWeek gameDay, bool ensureBalanced, int? seed = null);
+        //Task<List<ScheduleViewModel>> GenerateRandomScheduleAsync(DateTime startDate, int weeksToGenerate, DayOfWeek gameDay, bool ensureBalanced);
         Task<ScheduleValidationResult> ValidateScheduleAsync(List<ScheduleViewModel> scheduleItems);
         Task<int> SaveScheduleBatchAsync(List<ScheduleViewModel> scheduleItems);
     }

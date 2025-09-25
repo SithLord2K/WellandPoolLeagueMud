@@ -132,10 +132,10 @@
                                         }
                                     </MudTd>
                                     <MudTd DataLabel="Table #">
-                                        @if (!string.IsNullOrEmpty(context.Notes))
+                                        @if (context.TableNumber.HasValue)
                                         {
                                             <MudChip T="string" Color="Color.Tertiary" Size="Size.Small" Variant="Variant.Outlined">
-                                                Table #: @context.Notes
+                                                @context.TableNumber.Value
                                             </MudChip>
                                         }
                                     </MudTd>

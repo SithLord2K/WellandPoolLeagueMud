@@ -32,7 +32,7 @@
             @if (_filteredPlayers.Any())
             {
                 <MudPaper Class="pa-2" Style="max-height: 400px; overflow-y: auto;">
-                    <MudList Clickable="true" Dense="true" T="Player">
+                    <MudList Dense="true" T="Player">
                         @foreach (var player in _filteredPlayers.Take(20))
                         {
                             <MudListItem T="Player" OnClick="@(() => SelectPlayer(player))"

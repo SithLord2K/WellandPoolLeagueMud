@@ -14,6 +14,6 @@ namespace WellandPoolLeagueMud.Data.Services
         Task<List<ScheduleViewModel>> GetCompletedSchedulesAsync();
         Task<List<ScheduleViewModel>> GetUpcomingSchedulesAsync();
         Task<bool> ScheduleExistsAsync(int id);
-        Task<bool> CompleteScheduleAsync(int scheduleId, int winningTeamId, string? notes = null);
+        Task<bool> CompleteScheduleAsync(int scheduleId, int winningTeamId);
     }
 }

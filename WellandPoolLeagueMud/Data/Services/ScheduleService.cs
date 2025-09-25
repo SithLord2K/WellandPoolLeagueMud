@@ -31,7 +31,7 @@ namespace WellandPoolLeagueMud.Data.Services
                     WinningTeamId = s.WinningTeamId,
                     WinningTeamName = s.WinningTeam != null ? s.WinningTeam.TeamName : null,
                     IsComplete = s.IsComplete,
-                    Notes = s.Notes
+                    TableNumber = s.TableNumber
                 })
                 .OrderBy(s => s.WeekNumber)
                 .ThenBy(s => s.GameDate)
@@ -60,7 +60,7 @@ namespace WellandPoolLeagueMud.Data.Services
                 WinningTeamId = schedule.WinningTeamId,
                 WinningTeamName = schedule.WinningTeam?.TeamName,
                 IsComplete = schedule.IsComplete,
-                Notes = schedule.Notes
+                TableNumber = schedule.TableNumber
             };
         }
 
@@ -93,7 +93,7 @@ namespace WellandPoolLeagueMud.Data.Services
                 GameDate = (DateTime)scheduleVM.GameDate!,
                 WinningTeamId = scheduleVM.WinningTeamId,
                 IsComplete = scheduleVM.IsComplete,
-                Notes = scheduleVM.Notes
+                TableNumber = scheduleVM.TableNumber
             };
 
             _context.Schedules.Add(schedule);
@@ -133,7 +133,7 @@ namespace WellandPoolLeagueMud.Data.Services
             schedule.GameDate = (DateTime)scheduleVM.GameDate!;
             schedule.WinningTeamId = scheduleVM.WinningTeamId;
             schedule.IsComplete = scheduleVM.IsComplete;
-            schedule.Notes = scheduleVM.Notes;
+            schedule.TableNumber = scheduleVM.TableNumber;
 
             await _context.SaveChangesAsync();
             return scheduleVM;
@@ -168,7 +168,7 @@ namespace WellandPoolLeagueMud.Data.Services
                     WinningTeamId = s.WinningTeamId,
                     WinningTeamName = s.WinningTeam != null ? s.WinningTeam.TeamName : null,
                     IsComplete = s.IsComplete,
-                    Notes = s.Notes
+                    TableNumber = s.TableNumber
                 })
                 .OrderBy(s => s.GameDate)
                 .ToListAsync();
@@ -193,7 +193,7 @@ namespace WellandPoolLeagueMud.Data.Services
                     WinningTeamId = s.WinningTeamId,
                     WinningTeamName = s.WinningTeam != null ? s.WinningTeam.TeamName : null,
                     IsComplete = s.IsComplete,
-                    Notes = s.Notes
+                    TableNumber = s.TableNumber
                 })
                 .OrderBy(s => s.WeekNumber)
                 .ThenBy(s => s.GameDate)
@@ -219,7 +219,7 @@ namespace WellandPoolLeagueMud.Data.Services
                     WinningTeamId = s.WinningTeamId,
                     WinningTeamName = s.WinningTeam!.TeamName,
                     IsComplete = s.IsComplete,
-                    Notes = s.Notes
+                    TableNumber = s.TableNumber
                 })
                 .OrderByDescending(s => s.GameDate)
                 .ToListAsync();
@@ -244,7 +244,7 @@ namespace WellandPoolLeagueMud.Data.Services
                     WinningTeamId = s.WinningTeamId,
                     WinningTeamName = s.WinningTeam!.TeamName,
                     IsComplete = s.IsComplete,
-                    Notes = s.Notes
+                    TableNumber = s.TableNumber
                 })
                 .OrderBy(s => s.GameDate)
                 .ToListAsync();
@@ -255,7 +255,7 @@ namespace WellandPoolLeagueMud.Data.Services
             return await _context.Schedules.AnyAsync(s => s.ScheduleId == id);
         }
 
-        public async Task<bool> CompleteScheduleAsync(int scheduleId, int winningTeamId, string? notes = null)
+        public async Task<bool> CompleteScheduleAsync(int scheduleId, int winningTeamId)
         {
             var schedule = await _context.Schedules.FindAsync(scheduleId);
             if (schedule == null) return false;
@@ -265,8 +265,6 @@ namespace WellandPoolLeagueMud.Data.Services
 
             schedule.WinningTeamId = winningTeamId;
             schedule.IsComplete = true;
-            if (!string.IsNullOrEmpty(notes))
-                schedule.Notes = notes;
 
             await _context.SaveChangesAsync();
             return true;

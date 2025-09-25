@@ -12,6 +12,12 @@ namespace WellandPoolLeagueMud.Data.Services
         private readonly ITeamService _teamService;
         private readonly IBarService _barService;
         private readonly ILogger<ScheduleGeneratorService> _logger;
+        private const int HomeAwayBalanceTolerance = 2;
+        private const int MaxConsecutiveHomeGames = 3;
+
+        // Cache for performance optimization
+        private Dictionary<int, BarViewModel> _barsCache = new();
+        private Dictionary<int, TeamViewModel> _teamsCache = new();
 
         public ScheduleGeneratorService(ITeamService teamService, IBarService barService, ILogger<ScheduleGeneratorService> logger)
         {
@@ -22,233 +28,184 @@ namespace WellandPoolLeagueMud.Data.Services
 
         public async Task<List<ScheduleViewModel>> GenerateSingleRoundRobinScheduleAsync(DateTime startDate, DayOfWeek gameDay)
         {
-            var teams = await _teamService.GetAllTeamsAsync();
-            if (teams.Count < 2) return new List<ScheduleViewModel>();
-
-            var allBars = await _barService.GetActiveBarsAsync();
-            var barsDict = allBars.ToDictionary(b => b.BarId);
-
-            var schedule = new List<ScheduleViewModel>();
-            var teamVms = teams.ToList();
-
-            if (teamVms.Count % 2 != 0)
-            {
-                teamVms.Add(new TeamViewModel { TeamId = -1, TeamName = "BYE", BarId = -1 });
-            }
-
-            int numTeams = teamVms.Count;
-            int numRounds = numTeams - 1;
-            var teamNames = teamVms.ToDictionary(t => t.TeamId, t => t.TeamName);
-            var teamBars = teamVms.ToDictionary(t => t.TeamId, t => t.BarId);
-            var teamIds = teamVms.Select(t => t.TeamId).ToList();
-
-            while (startDate.DayOfWeek != gameDay)
-            {
-                startDate = startDate.AddDays(1);
-            }
-
-            for (int round = 0; round < numRounds; round++)
-            {
-                var gameDate = startDate.AddDays(round * 7);
-                var weeklyHomeBarIds = new HashSet<int>();
-                var barTableAssignments = new Dictionary<int, int>();
-
-                for (int i = 0; i < numTeams / 2; i++)
-                {
-                    int homeTeamId = teamIds[i];
-                    int awayTeamId = teamIds[numTeams - 1 - i];
-
-                    if (homeTeamId == -1 || awayTeamId == -1) continue;
-
-                    var homeTeamName = teamNames[homeTeamId];
-                    var awayTeamName = teamNames[awayTeamId];
-                    var homeBarId = teamBars[homeTeamId];
-                    var awayBarId = teamBars[awayTeamId];
-
-                    if (homeBarId.HasValue && weeklyHomeBarIds.Contains(homeBarId.Value))
-                    {
-                        if (awayBarId.HasValue && !weeklyHomeBarIds.Contains(awayBarId.Value))
-                        {
-                            (homeTeamId, awayTeamId) = (awayTeamId, homeTeamId);
-                            (homeTeamName, awayTeamName) = (awayTeamName, homeTeamName);
-                            (homeBarId, awayBarId) = (awayBarId, homeBarId);
-                        }
-                        else
-                        {
-                            _logger.LogWarning("Scheduling conflict in round {Round}: Both bars already have home teams", round + 1);
-                        }
-                    }
-
-                    if (homeBarId.HasValue)
-                    {
-                        weeklyHomeBarIds.Add(homeBarId.Value);
-                    }
-
-                    string notes = null!;
-
-                    if (homeBarId.HasValue && barsDict.TryGetValue(homeBarId.Value, out var barInfo) && barInfo.NumberOfTables > 1)
-                    {
-                        if (!barTableAssignments.ContainsKey(homeBarId.Value))
-                        {
-                            barTableAssignments[homeBarId.Value] = 1;
-                        }
-                        notes = $"Table {barTableAssignments[homeBarId.Value]++}";
-                    }
-
-                    schedule.Add(new ScheduleViewModel
-                    {
-                        WeekNumber = round + 1,
-                        GameDate = gameDate,
-                        HomeTeamId = homeTeamId,
-                        AwayTeamId = awayTeamId,
-                        HomeTeamName = homeTeamName,
-                        AwayTeamName = awayTeamName,
-                        Notes = notes
-                    });
-                }
-
-                var lastTeamId = teamIds.Last();
-                teamIds.RemoveAt(teamIds.Count - 1);
-                teamIds.Insert(1, lastTeamId);
-            }
-            return schedule;
+            return await GenerateScheduleAsync(startDate, gameDay, ScheduleType.SingleRoundRobin, 0, true);
         }
 
         public async Task<List<ScheduleViewModel>> GenerateDoubleRoundRobinScheduleAsync(DateTime startDate, DayOfWeek gameDay)
         {
-            var firstHalf = await GenerateSingleRoundRobinScheduleAsync(startDate, gameDay);
-            if (!firstHalf.Any()) return firstHalf;
-
-            var teams = await _teamService.GetAllTeamsAsync();
-            var teamBars = teams.ToDictionary(t => t.TeamId, t => t.BarId);
-
-            var allBars = await _barService.GetActiveBarsAsync();
-            var barsDict = allBars.ToDictionary(b => b.BarId);
-
-            var secondHalf = new List<ScheduleViewModel>();
-            int numRounds = firstHalf.Max(s => s.WeekNumber);
-
-            foreach (var game in firstHalf)
-            {
-                var newHomeTeamName = game.AwayTeamName;
-                var newAwayTeamName = game.HomeTeamName;
-                var newHomeTeamId = game.AwayTeamId;
-                var newAwayTeamId = game.HomeTeamId;
-                var newHomeBarId = teamBars.GetValueOrDefault(newHomeTeamId);
-                var weekNumber = game.WeekNumber + numRounds;
-
-                if (newHomeBarId.HasValue)
-                {
-                    var conflictingGame = secondHalf.FirstOrDefault(s =>
-                        s.WeekNumber == weekNumber &&
-                        teamBars.GetValueOrDefault(s.HomeTeamId) == newHomeBarId);
-
-                    if (conflictingGame != null)
-                    {
-                        (newHomeTeamId, newAwayTeamId) = (newAwayTeamId, newHomeTeamId);
-                        (newHomeTeamName, newAwayTeamName) = (newAwayTeamName, newHomeTeamName);
-                        newHomeBarId = teamBars.GetValueOrDefault(newHomeTeamId);
-                    }
-                }
-
-                string notes = null!;
-
-                if (newHomeBarId.HasValue && barsDict.TryGetValue(newHomeBarId.Value, out var barInfo) && barInfo.NumberOfTables > 1)
-                {
-                    var weekGames = secondHalf.Where(s => s.WeekNumber == weekNumber).ToList();
-                    var sameBarGamesCount = weekGames.Count(g =>
-                        teamBars.GetValueOrDefault(g.HomeTeamId) == newHomeBarId);
-                    notes = $"Table {sameBarGamesCount + 1}";
-                }
-
-                secondHalf.Add(new ScheduleViewModel
-                {
-                    WeekNumber = weekNumber,
-                    GameDate = game.GameDate.HasValue ? game.GameDate.Value.AddDays(numRounds * 7) : null,
-                    HomeTeamId = newHomeTeamId,
-                    AwayTeamId = newAwayTeamId,
-                    HomeTeamName = newHomeTeamName,
-                    AwayTeamName = newAwayTeamName,
-                    Notes = notes
-                });
-            }
-
-            return firstHalf.Concat(secondHalf).ToList();
+            return await GenerateScheduleAsync(startDate, gameDay, ScheduleType.DoubleRoundRobin, 0, true);
         }
 
-        public async Task<List<ScheduleViewModel>> GenerateRandomScheduleAsync(DateTime startDate, int weeksToGenerate, DayOfWeek gameDay, bool ensureBalanced)
+        public async Task<List<ScheduleViewModel>> GenerateRandomScheduleAsync(DateTime startDate, int weeksToGenerate, DayOfWeek gameDay, bool ensureBalanced, int? seed = null)
         {
+            return await GenerateScheduleAsync(startDate, gameDay, ScheduleType.Custom, weeksToGenerate, ensureBalanced, seed);
+        }
+
+        public async Task<ScheduleValidationResult> ValidateConstraintsBeforeGeneration()
+        {
+            var result = new ScheduleValidationResult();
             var teams = await _teamService.GetAllTeamsAsync();
-            if (teams.Count < 2) return new List<ScheduleViewModel>();
+            var bars = await _barService.GetActiveBarsAsync();
 
-            var allBars = await _barService.GetActiveBarsAsync();
-            var barsDict = allBars.ToDictionary(b => b.BarId);
-
-            var schedule = new List<ScheduleViewModel>();
-            var random = new Random();
-
-            while (startDate.DayOfWeek != gameDay)
+            if (teams.Count < 2)
             {
-                startDate = startDate.AddDays(1);
+                result.Errors.Add("At least 2 teams required for schedule generation");
+                return result;
             }
 
-            for (int week = 1; week <= weeksToGenerate; week++)
+            var totalCapacity = bars.Sum(b => b.NumberOfTables);
+            var gamesPerWeek = (teams.Count + 1) / 2; // Account for BYE week
+            var singleTableBars = bars.Where(b => b.NumberOfTables == 1).ToList();
+
+            if (gamesPerWeek > totalCapacity)
             {
-                var gameDate = startDate.AddDays((week - 1) * 7);
-                var availableTeams = teams.OrderBy(t => random.Next()).ToList();
-                var weeklyHomeBarIds = new HashSet<int>();
-                var barTableAssignments = new Dictionary<int, int>();
+                result.Errors.Add($"Insufficient bar capacity: Need {gamesPerWeek} games/week, only {totalCapacity} tables available");
+            }
 
-                while (availableTeams.Count >= 2)
+            if (singleTableBars.Count > gamesPerWeek)
+            {
+                result.Errors.Add("Impossible schedule: More single-table bars than weekly games possible");
+            }
+
+            // Check for teams concentrated at single bars
+            var teamsPerBar = teams.Where(t => t.BarId.HasValue)
+                .GroupBy(t => t.BarId!.Value)
+                .ToDictionary(g => g.Key, g => g.Count());
+
+            foreach (var barGroup in teamsPerBar)
+            {
+                var bar = bars.FirstOrDefault(b => b.BarId == barGroup.Key);
+                if (bar?.NumberOfTables == 1 && barGroup.Value > 2)
                 {
-                    var potentialHomeTeam = availableTeams[0];
-                    var potentialAwayTeam = availableTeams[1];
+                    result.Warnings.Add($"Bar '{bar.BarName}' has {barGroup.Value} teams but only 1 table - may cause scheduling conflicts");
+                }
+            }
 
-                    if (potentialHomeTeam.BarId.HasValue && weeklyHomeBarIds.Contains(potentialHomeTeam.BarId.Value))
+            return result;
+        }
+
+        private async Task<List<ScheduleViewModel>> GenerateScheduleAsync(DateTime startDate, DayOfWeek gameDay, ScheduleType type, int weeksToGenerate, bool ensureBalanced, int? seed = null)
+        {
+            var constraintCheck = await ValidateConstraintsBeforeGeneration();
+            if (!constraintCheck.IsValid)
+            {
+                _logger.LogError("Cannot generate schedule due to constraint violations: {Errors}", string.Join(", ", constraintCheck.Errors));
+                return new List<ScheduleViewModel>();
+            }
+
+            var teams = (await _teamService.GetAllTeamsAsync()).ToList();
+            var allBars = (await _barService.GetActiveBarsAsync()).ToList();
+
+            // Cache for performance
+            _barsCache = allBars.ToDictionary(b => b.BarId);
+            _teamsCache = teams.ToDictionary(t => t.TeamId);
+
+            var teamsWithBye = new List<TeamViewModel>(teams);
+            if (teamsWithBye.Count % 2 != 0) teamsWithBye.Add(new TeamViewModel { TeamId = -1, TeamName = "BYE" });
+
+            int numTeams = teamsWithBye.Count;
+            int numRoundsInHalf = numTeams - 1;
+            int totalRounds = type == ScheduleType.DoubleRoundRobin ? numRoundsInHalf * 2 : (type == ScheduleType.SingleRoundRobin ? numRoundsInHalf : weeksToGenerate);
+
+            var schedule = new List<ScheduleViewModel>();
+            var teamIds = teamsWithBye.Select(t => t.TeamId).ToList();
+            var homeAwayCounts = teamsWithBye.ToDictionary(t => t.TeamId, t => (Home: 0, Away: 0));
+            var consecutiveHomeTracker = teamsWithBye.ToDictionary(t => t.TeamId, t => 0);
+            var lastHomeTeamBySingleTableBar = new Dictionary<int, int>();
+            var firstHalfMatchups = new Dictionary<int, List<(int, int)>>();
+
+            // For deterministic random scheduling
+            var random = seed.HasValue ? new Random(seed.Value) : new Random();
+
+            while (startDate.DayOfWeek != gameDay) startDate = startDate.AddDays(1);
+
+            _logger.LogDebug("Generating {Type} schedule for {TeamCount} teams starting {Date}", type, teams.Count, startDate);
+
+            for (int round = 0; round < totalRounds; round++)
+            {
+                var gameDate = startDate.AddDays(round * 7);
+                var weeklyGames = new List<ScheduleViewModel>();
+                var weeklyBarCount = new Dictionary<int, int>();
+
+                List<(int, int)> pairings;
+                bool isSecondHalf = type == ScheduleType.DoubleRoundRobin && round >= numRoundsInHalf;
+
+                if (isSecondHalf)
+                {
+                    pairings = firstHalfMatchups[round - numRoundsInHalf].Select(p => (p.Item2, p.Item1)).ToList();
+                }
+                else
+                {
+                    pairings = type == ScheduleType.Custom ?
+                        GetRandomPairings(teamIds, random) :
+                        GetPairingsForRound(teamIds);
+
+                    if (type != ScheduleType.Custom) firstHalfMatchups[round] = pairings;
+                }
+
+                foreach (var pair in pairings)
+                {
+                    if (pair.Item1 == -1 || pair.Item2 == -1) continue;
+
+                    var team1 = _teamsCache[pair.Item1];
+                    var team2 = _teamsCache[pair.Item2];
+
+                    var homeTeam = team1;
+                    var awayTeam = team2;
+
+                    if (ShouldSwap(homeTeam, awayTeam, weeklyBarCount, homeAwayCounts, lastHomeTeamBySingleTableBar, consecutiveHomeTracker, ensureBalanced))
                     {
-                        var alternativeHome = availableTeams.Skip(2)
-                            .FirstOrDefault(t => !t.BarId.HasValue || !weeklyHomeBarIds.Contains(t.BarId.Value));
-
-                        if (alternativeHome != null)
-                        {
-                            var index = availableTeams.IndexOf(alternativeHome);
-                            availableTeams[0] = alternativeHome;
-                            availableTeams[index] = potentialHomeTeam;
-                            potentialHomeTeam = alternativeHome;
-                        }
+                        (homeTeam, awayTeam) = (awayTeam, homeTeam);
                     }
 
-                    var homeTeam = potentialHomeTeam;
-                    var awayTeam = potentialAwayTeam;
-                    availableTeams.RemoveRange(0, 2);
+                    weeklyGames.Add(new ScheduleViewModel
+                    {
+                        WeekNumber = round + 1,
+                        GameDate = gameDate,
+                        HomeTeamId = homeTeam.TeamId,
+                        AwayTeamId = awayTeam.TeamId,
+                        HomeTeamName = homeTeam.TeamName,
+                        AwayTeamName = awayTeam.TeamName
+                    });
 
                     if (homeTeam.BarId.HasValue)
                     {
-                        weeklyHomeBarIds.Add(homeTeam.BarId.Value);
+                        weeklyBarCount[homeTeam.BarId.Value] = weeklyBarCount.GetValueOrDefault(homeTeam.BarId.Value, 0) + 1;
                     }
+                }
 
-                    string notes = null!;
-                    if (homeTeam.BarId.HasValue && barsDict.TryGetValue(homeTeam.BarId.Value, out var barInfo) && barInfo.NumberOfTables > 1)
+                FinalReviewAndFix(weeklyGames, allBars, lastHomeTeamBySingleTableBar, consecutiveHomeTracker, round + 1);
+
+                var tableAssignmentTracker = new Dictionary<int, int>();
+                foreach (var game in weeklyGames)
+                {
+                    var homeTeam = _teamsCache[game.HomeTeamId];
+                    homeAwayCounts[game.HomeTeamId] = (homeAwayCounts[game.HomeTeamId].Home + 1, homeAwayCounts[game.HomeTeamId].Away);
+                    homeAwayCounts[game.AwayTeamId] = (homeAwayCounts[game.AwayTeamId].Home, homeAwayCounts[game.AwayTeamId].Away + 1);
+                    consecutiveHomeTracker[game.HomeTeamId]++;
+                    consecutiveHomeTracker[game.AwayTeamId] = 0;
+
+                    if (homeTeam.BarId.HasValue)
                     {
-                        if (!barTableAssignments.ContainsKey(homeTeam.BarId.Value))
-                        {
-                            barTableAssignments[homeTeam.BarId.Value] = 1;
-                        }
-                        notes = $"Table {barTableAssignments[homeTeam.BarId.Value]++}";
+                        var barId = homeTeam.BarId.Value;
+                        game.TableNumber = GetTableNumberAssignment(barId, tableAssignmentTracker);
+
+                        var bar = _barsCache[barId];
+                        if (bar.NumberOfTables == 1)
+                            lastHomeTeamBySingleTableBar[bar.BarId] = homeTeam.TeamId;
                     }
+                }
+                schedule.AddRange(weeklyGames);
 
-                    schedule.Add(new ScheduleViewModel
-                    {
-                        WeekNumber = week,
-                        GameDate = gameDate,
-                        HomeTeamId = homeTeam.TeamId,
-                        HomeTeamName = homeTeam.TeamName,
-                        AwayTeamId = awayTeam.TeamId,
-                        AwayTeamName = awayTeam.TeamName,
-                        Notes = notes
-                    });
+                if (!isSecondHalf && type != ScheduleType.Custom)
+                {
+                    var lastTeamId = teamIds.Last();
+                    teamIds.RemoveAt(teamIds.Count - 1);
+                    teamIds.Insert(1, lastTeamId);
                 }
             }
+
+            _logger.LogInformation("Generated {GameCount} games across {WeekCount} weeks", schedule.Count, totalRounds);
             return schedule;
         }
 
@@ -262,56 +219,240 @@ namespace WellandPoolLeagueMud.Data.Services
             }
 
             var teams = await _teamService.GetAllTeamsAsync();
-            var teamBars = teams.ToDictionary(t => t.TeamId, t => t.BarId);
-
+            var teamsDict = teams.ToDictionary(t => t.TeamId);
             var allBars = await _barService.GetActiveBarsAsync();
             var barsDict = allBars.ToDictionary(b => b.BarId);
+            var singleTableBars = allBars.Where(b => b.NumberOfTables == 1).ToDictionary(b => b.BarId);
+            var homeAwayCounts = teams.ToDictionary(t => t.TeamId, t => (Home: 0, Away: 0));
+            var consecutiveHomeTracker = teams.ToDictionary(t => t.TeamId, t => 0);
+            var lastHomeTeamBySingleTableBar = new Dictionary<int, int>();
+            var weeklyGames = scheduleItems.GroupBy(s => s.WeekNumber).OrderBy(g => g.Key);
 
-            var weeklyBarHomeTeams = scheduleItems
-                .GroupBy(s => s.WeekNumber)
-                .ToList();
-
-            foreach (var weekGroup in weeklyBarHomeTeams)
+            foreach (var weekGroup in weeklyGames)
             {
-                var homeTeamsByBar = weekGroup
-                    .GroupBy(g => teamBars.GetValueOrDefault(g.HomeTeamId, -1))
-                    .Where(barGroup => barGroup.Key != -1)
-                    .ToList();
+                var teamsPlayingThisWeek = new HashSet<int>();
+                var weeklyBarHomeTeamCount = new Dictionary<int, int>();
 
-                foreach (var barGroup in homeTeamsByBar)
+                foreach (var game in weekGroup.Where(g => g.HomeTeamId != -1 && g.AwayTeamId != -1)) // Filter BYE games
                 {
-                    if (barGroup.Count() > 1)
+                    if (!teamsPlayingThisWeek.Add(game.HomeTeamId))
+                        result.Errors.Add($"Week {weekGroup.Key}: Team '{game.HomeTeamName}' plays more than once.");
+                    if (!teamsPlayingThisWeek.Add(game.AwayTeamId))
+                        result.Errors.Add($"Week {weekGroup.Key}: Team '{game.AwayTeamName}' plays more than once.");
+
+                    homeAwayCounts[game.HomeTeamId] = (homeAwayCounts[game.HomeTeamId].Home + 1, homeAwayCounts[game.HomeTeamId].Away);
+                    homeAwayCounts[game.AwayTeamId] = (homeAwayCounts[game.AwayTeamId].Home, homeAwayCounts[game.AwayTeamId].Away + 1);
+                    consecutiveHomeTracker[game.HomeTeamId]++;
+                    consecutiveHomeTracker[game.AwayTeamId] = 0;
+
+                    if (consecutiveHomeTracker[game.HomeTeamId] > MaxConsecutiveHomeGames)
+                        result.Errors.Add($"Week {weekGroup.Key}: Team '{game.HomeTeamName}' has more than {MaxConsecutiveHomeGames} consecutive home games.");
+
+                    var homeTeam = teamsDict.GetValueOrDefault(game.HomeTeamId);
+                    if (homeTeam?.BarId.HasValue == true)
                     {
-                        var barTeamNames = barGroup.Select(g => g.HomeTeamName);
-                        result.Errors.Add($"Week {weekGroup.Key}: Multiple home teams from same bar - {string.Join(", ", barTeamNames)}");
+                        var barId = homeTeam.BarId.Value;
+                        weeklyBarHomeTeamCount[barId] = weeklyBarHomeTeamCount.GetValueOrDefault(barId, 0) + 1;
+
+                        if (singleTableBars.ContainsKey(barId))
+                        {
+                            if (lastHomeTeamBySingleTableBar.TryGetValue(barId, out var lastHomeTeamId) && lastHomeTeamId == game.HomeTeamId)
+                                result.Errors.Add($"Week {weekGroup.Key}: Team '{game.HomeTeamName}' is home at '{singleTableBars[barId].BarName}' for a second consecutive week.");
+                            lastHomeTeamBySingleTableBar[barId] = game.HomeTeamId;
+                        }
                     }
+                }
+
+                foreach (var barCount in weeklyBarHomeTeamCount)
+                {
+                    if (barsDict.TryGetValue(barCount.Key, out var barInfo) && barCount.Value > barInfo.NumberOfTables)
+                        result.Errors.Add($"Week {weekGroup.Key}: Bar '{barInfo.BarName}' is over capacity ({barCount.Value} games / {barInfo.NumberOfTables} tables).");
+                }
+
+                var homeBarsUsedThisWeek = weeklyBarHomeTeamCount.Keys;
+                foreach (var singleBar in singleTableBars)
+                {
+                    if (!homeBarsUsedThisWeek.Contains(singleBar.Key))
+                        result.Errors.Add($"Week {weekGroup.Key}: Single-table bar '{singleBar.Value.BarName}' has no home game.");
                 }
             }
 
-            var gamesMissingRequiredTableAssignment = scheduleItems.Where(s =>
+            // Enhanced home/away balance checking
+            foreach (var count in homeAwayCounts.Where(kvp => kvp.Key != -1))
             {
-                var homeBarId = teamBars.GetValueOrDefault(s.HomeTeamId);
-                if (!homeBarId.HasValue) return false;
-
-                if (barsDict.TryGetValue(homeBarId.Value, out var barInfo) && barInfo.NumberOfTables > 1)
+                var imbalance = Math.Abs(count.Value.Home - count.Value.Away);
+                if (imbalance > HomeAwayBalanceTolerance)
                 {
-                    return string.IsNullOrEmpty(s.Notes) || !s.Notes.StartsWith("Table ");
+                    var teamName = teamsDict[count.Key].TeamName;
+                    var severity = imbalance > HomeAwayBalanceTolerance + 2 ? "major" : "minor";
+                    result.Warnings.Add($"Team '{teamName}' has {severity} schedule imbalance: {count.Value.Home} Home, {count.Value.Away} Away.");
                 }
-                return false;
-            }).ToList();
-
-            if (gamesMissingRequiredTableAssignment.Any())
-            {
-                result.Errors.Add($"Found {gamesMissingRequiredTableAssignment.Count} games that require a table assignment but don't have one.");
             }
 
             return result;
         }
 
+        #region Helper Methods
+
+        private void FinalReviewAndFix(List<ScheduleViewModel> weeklyGames, List<BarViewModel> allBars, Dictionary<int, int> lastHome, Dictionary<int, int> consecutiveHome, int weekNumber)
+        {
+            var singleTableBars = allBars.Where(b => b.NumberOfTables == 1).ToList();
+            var weeklyBarCount = new Dictionary<int, int>();
+
+            foreach (var game in weeklyGames)
+            {
+                var homeTeam = _teamsCache[game.HomeTeamId];
+                if (homeTeam.BarId.HasValue)
+                    weeklyBarCount[homeTeam.BarId.Value] = weeklyBarCount.GetValueOrDefault(homeTeam.BarId.Value, 0) + 1;
+            }
+
+            var homeBarsUsed = new HashSet<int>(weeklyBarCount.Keys.Where(k => weeklyBarCount[k] > 0));
+            var swapsMade = false;
+
+            foreach (var missedBar in singleTableBars.Where(b => !homeBarsUsed.Contains(b.BarId)))
+            {
+                var teamToMakeHome = _teamsCache.Values.FirstOrDefault(t => t.BarId == missedBar.BarId);
+                if (teamToMakeHome == null) continue;
+
+                var gameToSwap = weeklyGames.FirstOrDefault(g => g.AwayTeamId == teamToMakeHome.TeamId);
+                if (gameToSwap != null && consecutiveHome.GetValueOrDefault(teamToMakeHome.TeamId, 0) < MaxConsecutiveHomeGames)
+                {
+                    PerformSwap(gameToSwap, weeklyBarCount);
+                    swapsMade = true;
+                }
+            }
+
+            if (swapsMade)
+            {
+                _logger.LogDebug("Made swaps in week {Week} to ensure single-table bar coverage", weekNumber);
+            }
+
+            // Fix over-capacity bars
+            int attempts = 0;
+            do
+            {
+                swapsMade = false;
+                var overCapacityBars = allBars.Where(b => weeklyBarCount.GetValueOrDefault(b.BarId, 0) > b.NumberOfTables).ToList();
+
+                foreach (var bar in overCapacityBars)
+                {
+                    var excessGame = weeklyGames.FirstOrDefault(g =>
+                        _teamsCache[g.HomeTeamId].BarId == bar.BarId &&
+                        CanBeHome(_teamsCache[g.AwayTeamId], weeklyBarCount, lastHome, consecutiveHome));
+
+                    if (excessGame != null)
+                    {
+                        PerformSwap(excessGame, weeklyBarCount);
+                        swapsMade = true;
+                    }
+                }
+                attempts++;
+            } while (swapsMade && attempts < 5);
+        }
+
+        private void PerformSwap(ScheduleViewModel game, Dictionary<int, int> weeklyBarCount)
+        {
+            var originalHomeTeam = _teamsCache[game.HomeTeamId];
+            var newHomeTeam = _teamsCache[game.AwayTeamId];
+
+            if (originalHomeTeam.BarId.HasValue) weeklyBarCount[originalHomeTeam.BarId.Value]--;
+            if (newHomeTeam.BarId.HasValue) weeklyBarCount[newHomeTeam.BarId.Value] = weeklyBarCount.GetValueOrDefault(newHomeTeam.BarId.Value, 0) + 1;
+
+            (game.HomeTeamId, game.AwayTeamId) = (game.AwayTeamId, game.HomeTeamId);
+            (game.HomeTeamName, game.AwayTeamName) = (game.AwayTeamName, game.HomeTeamName);
+        }
+
+        private bool ShouldSwap(TeamViewModel team1, TeamViewModel team2, Dictionary<int, int> weeklyBarCount, Dictionary<int, (int Home, int Away)> counts, Dictionary<int, int> lastHome, Dictionary<int, int> consecutiveHome, bool balance)
+        {
+            var canTeam1BeHome = CanBeHome(team1, weeklyBarCount, lastHome, consecutiveHome);
+            var canTeam2BeHome = CanBeHome(team2, weeklyBarCount, lastHome, consecutiveHome);
+
+            if (canTeam1BeHome && !canTeam2BeHome) return false;
+            if (!canTeam1BeHome && canTeam2BeHome) return true;
+
+            // Enhanced balance logic
+            if (canTeam1BeHome && canTeam2BeHome && balance)
+            {
+                var team1HomeCount = counts[team1.TeamId].Home;
+                var team2HomeCount = counts[team2.TeamId].Home;
+                var deficit = team2HomeCount - team1HomeCount;
+
+                // Prioritize team with fewer home games
+                if (Math.Abs(deficit) > 1)
+                {
+                    return deficit > 0; // Give home to team2 if they have fewer
+                }
+
+                // Consider consecutive games as tiebreaker
+                var team1Consecutive = consecutiveHome.GetValueOrDefault(team1.TeamId, 0);
+                var team2Consecutive = consecutiveHome.GetValueOrDefault(team2.TeamId, 0);
+
+                if (team1Consecutive > team2Consecutive) return true;
+            }
+
+            return !canTeam1BeHome;
+        }
+
+        private bool CanBeHome(TeamViewModel team, Dictionary<int, int> weeklyBarCount, Dictionary<int, int> lastHome, Dictionary<int, int> consecutiveHome)
+        {
+            if (team.TeamId == -1 || !team.BarId.HasValue) return false;
+
+            var barId = team.BarId.Value;
+            if (!_barsCache.TryGetValue(barId, out var bar)) return false;
+
+            if (weeklyBarCount.GetValueOrDefault(barId, 0) >= bar.NumberOfTables) return false;
+            if (bar.NumberOfTables == 1 && lastHome.GetValueOrDefault(barId, 0) == team.TeamId) return false;
+            if (consecutiveHome.GetValueOrDefault(team.TeamId, 0) >= MaxConsecutiveHomeGames) return false;
+
+            return true;
+        }
+
+        private int? GetTableNumberAssignment(int barId, Dictionary<int, int> tableTracker)
+        {
+            if (_barsCache.TryGetValue(barId, out var bar) && bar.NumberOfTables > 1)
+            {
+                int gamesAlreadyAtBar = tableTracker.GetValueOrDefault(barId, 0);
+                int assignedTable = (gamesAlreadyAtBar % bar.NumberOfTables) + 1;
+                tableTracker[barId] = gamesAlreadyAtBar + 1;
+                return assignedTable;
+            }
+            return null;
+        }
+
+        private List<(int, int)> GetPairingsForRound(List<int> teamIds)
+        {
+            var pairings = new List<(int, int)>();
+            int numTeams = teamIds.Count;
+            for (int i = 0; i < numTeams / 2; i++)
+            {
+                int team1 = teamIds[i];
+                int team2 = teamIds[numTeams - 1 - i];
+                pairings.Add((team1, team2));
+            }
+            return pairings;
+        }
+
+        private List<(int, int)> GetRandomPairings(List<int> teamIds, Random random)
+        {
+            var availableTeams = teamIds.Where(id => id != -1).OrderBy(x => random.Next()).ToList();
+            var pairings = new List<(int, int)>();
+
+            for (int i = 0; i < availableTeams.Count - 1; i += 2)
+            {
+                pairings.Add((availableTeams[i], availableTeams[i + 1]));
+            }
+
+            return pairings;
+        }
+
         public Task<int> SaveScheduleBatchAsync(List<ScheduleViewModel> scheduleItems)
         {
-            _logger.LogInformation("Saving a batch of {Count} schedule items.", scheduleItems.Count);
+            _logger.LogInformation("Saving batch of {Count} schedule items", scheduleItems.Count);
             return Task.FromResult(scheduleItems.Count);
         }
+
+        #endregion
     }
+
+    internal enum ScheduleType { SingleRoundRobin, DoubleRoundRobin, Custom }
 }
