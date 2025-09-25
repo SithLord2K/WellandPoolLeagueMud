@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
-
+	
   <ItemGroup>
     <Content Remove="C:\Users\sithl\.nuget\packages\microsoft.codeanalysis.workspaces.msbuild\4.14.0\contentFiles\any\any\BuildHost-net472\cs\System.CommandLine.resources.dll" />
     <Content Remove="C:\Users\sithl\.nuget\packages\microsoft.codeanalysis.workspaces.msbuild\4.14.0\contentFiles\any\any\BuildHost-net472\de\System.CommandLine.resources.dll" />
@@ -85,7 +85,7 @@
     <PackageReference Include="Microsoft.IdentityModel.Abstractions" Version="8.14.0" />
     <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="8.14.0" />
     <PackageReference Include="MudBlazor" Version="8.12.0" />
-    <PackageReference Include="QuestPDF" Version="2025.7.1" />
+    <PackageReference Include="QuestPDF" Version="2025.7.2" />
     <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.4" />

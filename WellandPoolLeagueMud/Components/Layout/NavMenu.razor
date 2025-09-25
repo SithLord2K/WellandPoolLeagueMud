@@ -1,5 +1,7 @@
-﻿<MudNavMenu Dense="true" Style="height: 100%; display: flex; flex-direction: column;">
+﻿@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
 
+<MudNavMenu Dense="true" Style="height: 100%; display: flex; flex-direction: column;">
     <div>
         <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
         <MudNavLink Href="team_rosters" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Group">Rosters</MudNavLink>
@@ -12,7 +14,7 @@
             <MudNavLink Href="playoff_schedule" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.DateRange">Playoffs</MudNavLink>
         </MudNavGroup>
         <AuthorizeView Roles="League_Admin, Super_User">
-            <Authorized>
+            <Authorized Context="adminContext">
                 <MudDivider />
                 <MudNavGroup Title="Admin" Icon="@Icons.Material.Filled.AdminPanelSettings">
                     <MudNavLink Href="admin/players" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Person">Players</MudNavLink>
@@ -21,13 +23,20 @@
                     <MudNavLink Href="admin/teams" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Group">Teams</MudNavLink>
                     <MudNavLink Href="admin/schedules" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Schedule">Schedules</MudNavLink>
                     <MudNavLink Href="admin/schedule-generator" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.ScheduleSend">Schedule Generator</MudNavLink>
-                    <MudNavLink Href="admin/user-management" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.SupervisedUserCircle">User Management</MudNavLink>
-                    <MudNavLink Href="admin/role-management" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.SupervisorAccount">Role Management</MudNavLink>
                     <MudNavLink Href="admin/reports" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Report">Reports</MudNavLink>
+                    @if (adminContext.User.IsInRole("Super_User"))
+                    {
+                        <MudNavLink Href="admin/user-management" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.SupervisedUserCircle">User Management</MudNavLink>
+                        <MudNavLink Href="admin/role-management" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.SupervisorAccount">Role Management</MudNavLink>
+                    }
                 </MudNavGroup>
             </Authorized>
         </AuthorizeView>
         <MudDivider />
-        <MudNavLink Href="/Downloads/Poolscoresheet.xls" Icon="@Icons.Material.Filled.Download">Scoresheet Download</MudNavLink>
+        <AuthorizeView>
+            <Authorized>
+                <MudNavLink Href="/Downloads/Poolscoresheet.xls" Icon="@Icons.Material.Filled.Download">Scoresheet Download</MudNavLink>
+            </Authorized>
+        </AuthorizeView>
     </div>
 </MudNavMenu>

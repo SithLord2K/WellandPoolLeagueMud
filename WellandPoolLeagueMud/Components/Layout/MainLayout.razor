@@ -11,7 +11,7 @@
 <MudThemeProvider Theme="_poolLeagueTheme" @bind-IsDarkMode="@useDarkMode" />
 <MudDialogProvider />
 <MudPopoverProvider />
-<MudSnackbarProvider Position="Defaults.Classes.Position.BottomRight" />
+<MudSnackbarProvider />
 
 <MudLayout>
     <MudAppBar Elevation="6">
@@ -78,6 +78,7 @@
             <LoginButton />
         }
     </MudAppBar>
+    <!--App Drawer-->
     <MudDrawer id="nav-drawer" @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="6">
         <NavMenu />
     </MudDrawer>
