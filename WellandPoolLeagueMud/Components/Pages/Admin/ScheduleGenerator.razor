@@ -1,11 +1,11 @@
 ﻿@page "/admin/schedule-generator"
+@attribute [Authorize(Roles = "League_Admin, Super_User")]
 @using WellandPoolLeagueMud.Data.ViewModels
 @using WellandPoolLeagueMud.Data.Services
 @inject IScheduleGeneratorService ScheduleGeneratorService
 @inject ITeamService TeamService
 @inject ISnackbar Snackbar
 @inject ILogger<ScheduleGenerator> Logger
-@attribute [Authorize(Roles = "Super_User")]
 
 <PageTitle>Schedule Generator</PageTitle>
 
