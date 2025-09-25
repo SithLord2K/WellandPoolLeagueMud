@@ -1,0 +1,255 @@
+﻿@page "/admin/season-rollover"
+@using Microsoft.EntityFrameworkCore
+@using WellandPoolLeagueMud.Components.Dialogs
+@inject IDbContextFactory<WellandPoolLeagueDbContext> DbContextFactory
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-8">
+    <MudPaper Class="pa-6" Elevation="3">
+        <MudText Typo="Typo.h4" GutterBottom="true">League Season Rollover</MudText>
+        <MudText Color="Color.Info" Class="mb-4">
+            This utility will directly execute a script against the database to:
+            <MudList T="string">
+                <MudListItem Icon="@Icons.Material.Filled.Backup">Back up selected league tables for a new season.</MudListItem>
+                <MudListItem Icon="@Icons.Material.Filled.CleaningServices">Reset player team assignments by setting their team to NULL.</MudListItem>
+                <MudListItem Icon="@Icons.Material.Filled.DeleteForever">Clear and reseed the selected tables (excluding Players).</MudListItem>
+            </MudList>
+        </MudText>
+
+        @* Step 1: Table Selection *@
+        <MudCard Class="mb-6">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">Step 1: Select Tables to Back Up & Reset</MudText>
+                    <MudText Typo="Typo.body2">
+                        Choose tables to back up. <strong>Note:</strong> If 'Players' is selected, it will be backed up and team links reset, but player data will <strong>not</strong> be deleted. 'UserProfiles' are always excluded.
+                    </MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                @if (_tables.Any())
+                {
+                    <MudGrid Spacing="2">
+                        @foreach (var table in _tables)
+                        {
+                            <MudItem xs="12" sm="6" md="4" lg="3">
+                                <MudCheckBox @bind-Checked="@table.IsSelected" T="bool" Label="@table.DisplayName" Color="Color.Primary" />
+                            </MudItem>
+                        }
+                    </MudGrid>
+                }
+                else
+                {
+                    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                }
+            </MudCardContent>
+            <MudCardActions>
+                @* <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SelectAll" StartIcon="@Icons.Material.Filled.SelectAll">Select All</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="DeselectAll" StartIcon="@Icons.Material.Filled.Deselect">Deselect All</MudBu *@tton>
+            </MudCardActions>
+        </MudCard>
+
+        @* Step 2: Action *@
+        <MudCard Class="mb-6">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">Step 2: Execute Rollover Script</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudAlert Severity="Severity.Error" Class="mb-4">
+                    <strong>DANGER:</strong> This action will permanently alter the database. Always perform a full manual backup before proceeding. This cannot be undone.
+                </MudAlert>
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Error"
+                           OnClick="ConfirmAndExecuteScript"
+                           Disabled="@(!_tables.Any(t => t.IsSelected) || _isProcessing)"
+                           StartIcon="@Icons.Material.Filled.Warning">
+                    @if (_isProcessing)
+                    {
+                        <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                        <span class="ms-2">Processing...</span>
+                    }
+                    else
+                    {
+                        <span>Execute Season Rollover</span>
+                    }
+                </MudButton>
+            </MudCardContent>
+        </MudCard>
+
+        @* Step 3: Result Log *@
+        @if (!string.IsNullOrEmpty(_executionLog))
+        {
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Step 3: Execution Result</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudAlert Severity="_logSeverity" Variant="Variant.Outlined">@_executionLog</MudAlert>
+                </MudCardContent>
+            </MudCard>
+        }
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private List<TableSelection> _tables = new();
+    private bool _isProcessing = false;
+    private string _executionLog = string.Empty;
+    private Severity _logSeverity = Severity.Normal;
+
+    private readonly HashSet<string> _seasonSpecificTables = new()
+    {
+        "WPLMud_Players",
+        "WPLMud_Teams",
+        "WPLMud_PlayerGames",
+        "WPLMud_Schedules"
+    };
+
+    private readonly List<string> _dependencyOrder = new()
+    {
+        "WPLMud_Bars",
+        "WPLMud_Players",
+        "WPLMud_Teams",
+        "WPLMud_Schedules",
+        "WPLMud_PlayerGames"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await using var context = await DbContextFactory.CreateDbContextAsync();
+        var excludedTables = new HashSet<string> { "WPLMud_UserProfiles" };
+
+        _tables = context.Model.GetEntityTypes()
+            .Select(e => new TableSelection
+            {
+                DbName = e.GetTableName()!,
+                DisplayName = e.GetTableName()!.Replace("WPLMud_", ""),
+                IsSelected = _seasonSpecificTables.Contains(e.GetTableName()!)
+            })
+            .Where(t => t.DbName != null && !excludedTables.Contains(t.DbName))
+            .OrderBy(t => t.DisplayName)
+            .ToList();
+    }
+
+    private async Task ConfirmAndExecuteScript()
+    {
+        var parameters = new DialogParameters
+        {
+            ["ContentText"] = "This will permanently alter the database and cannot be undone. Are you sure you want to proceed with the season rollover?",
+            ["ButtonText"] = "Yes, Execute Now",
+            ["Color"] = Color.Error,
+            ["Title"] = "Confirm Database Execution"
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmExecutionDialog>("Confirm Database Execution", parameters);
+        var result = await dialog.Result;
+
+        if (result!.Canceled == false && result.Data is true)
+        {
+            await ExecuteScript();
+        }
+    }
+
+    private async Task ExecuteScript()
+    {
+        _isProcessing = true;
+        _executionLog = string.Empty;
+        StateHasChanged();
+
+        var selectedTables = _tables.Where(t => t.IsSelected).Select(t => t.DbName).ToList();
+        if (!selectedTables.Any())
+        {
+            Snackbar.Add("Please select at least one table.", Severity.Info);
+            _isProcessing = false;
+            return;
+        }
+
+        var seasonYear = DateTime.UtcNow.Year;
+        var builder = new System.Text.StringBuilder();
+
+        builder.AppendLine("BEGIN TRANSACTION;");
+        builder.AppendLine("BEGIN TRY");
+
+        foreach (var tableName in selectedTables)
+        {
+            var backupTableName = $"{tableName}_Season_{seasonYear}";
+            builder.AppendLine($"IF OBJECT_ID('[{backupTableName}]', 'U') IS NOT NULL DROP TABLE [{backupTableName}];");
+            builder.AppendLine($"SELECT * INTO [{backupTableName}] FROM [{tableName}];");
+        }
+
+        builder.AppendLine("UPDATE [WPLMud_Players] SET [TeamId] = NULL;");
+
+        var tablesToClear = selectedTables
+            .Where(t => t != "WPLMud_Players")
+            .OrderByDescending(t => _dependencyOrder.IndexOf(t))
+            .ToList();
+
+        if (tablesToClear.Any())
+        {
+            foreach (var tableName in tablesToClear)
+            {
+                builder.AppendLine($"DELETE FROM [{tableName}];");
+                builder.AppendLine($"DBCC CHECKIDENT ('[{tableName}]', RESEED, 0);");
+            }
+        }
+
+        builder.AppendLine("COMMIT TRANSACTION;");
+        builder.AppendLine("END TRY");
+        builder.AppendLine("BEGIN CATCH");
+        builder.AppendLine("    IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;");
+        builder.AppendLine("    THROW;");
+        builder.AppendLine("END CATCH;");
+
+        try
+        {
+            await using var context = await DbContextFactory.CreateDbContextAsync();
+            await context.Database.ExecuteSqlRawAsync(builder.ToString());
+
+            _logSeverity = Severity.Success;
+            _executionLog = $"Successfully completed season rollover for {seasonYear} at {DateTime.Now}.";
+            Snackbar.Add("Database updated successfully!", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            _logSeverity = Severity.Error;
+            _executionLog = $"An error occurred during execution: {ex.Message}";
+            Snackbar.Add("An error occurred. Check the log for details.", Severity.Error);
+        }
+        finally
+        {
+            _isProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private void SelectAll()
+    {
+        foreach (var table in _tables)
+        {
+            table.IsSelected = true;
+        }
+        StateHasChanged();
+    }
+
+    private void DeselectAll()
+    {
+        foreach (var table in _tables)
+        {
+            table.IsSelected = false;
+        }
+        StateHasChanged();
+    }
+
+    public class TableSelection
+    {
+        public string DbName { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
+        public bool IsSelected { get; set; }
+    }
+}
+
