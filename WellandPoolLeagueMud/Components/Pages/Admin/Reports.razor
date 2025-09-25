@@ -7,7 +7,7 @@
     <MudText Typo="Typo.h5" GutterBottom="true">Report Generator</MudText>
     <MudGrid Spacing="4">
         <MudItem xs="12" md="6">
-            <MudSelect @bind-Value="_selectedReportType" Label="Select Report Type" Variant="Variant.Outlined">
+            <MudSelect @bind-Value="_selectedReportType" Label="Select Report Type" Dense="true" Variant="Variant.Outlined">
                 <MudSelectItem Value="@("Select Report Type")" Disabled>Select Report Type</MudSelectItem>
                 <MudSelectItem Value="@("OverallTeamStandings")">Overall Team Standings</MudSelectItem>
                 <MudSelectItem Value="@("PlayerStandings")">Overall Player Standings</MudSelectItem>

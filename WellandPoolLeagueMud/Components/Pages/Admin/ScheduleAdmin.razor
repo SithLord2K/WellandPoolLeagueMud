@@ -33,6 +33,7 @@
                                            ValueChanged="@LoadSchedule"
                                            Variant="Variant.Filled"
                                            AdornmentIcon="@Icons.Material.Filled.Schedule"
+                                           Dense="true"
                                            Adornment="Adornment.Start">
                                     <MudSelectItem T="int" Value="0">Create New Schedule</MudSelectItem>
                                     @if (allSchedules is not null && allTeams is not null)
@@ -82,6 +83,7 @@
                                            RequiredError="Home team is required"
                                            Variant="Variant.Filled"
                                            AdornmentIcon="@Icons.Material.Filled.Home"
+                                           Dense="true"
                                            Adornment="Adornment.Start">
                                     <MudSelectItem T="int" Value="0">Select Home Team</MudSelectItem>
                                     @if (allTeams is not null)
@@ -102,6 +104,7 @@
                                            RequiredError="Away team is required"
                                            Variant="Variant.Filled"
                                            AdornmentIcon="@Icons.Material.Filled.Flight"
+                                           Dense="true"
                                            Adornment="Adornment.Start">
                                     <MudSelectItem T="int" Value="0">Select Away Team</MudSelectItem>
                                     @if (allTeams is not null)
@@ -121,6 +124,7 @@
                                            Variant="Variant.Filled"
                                            AdornmentIcon="@Icons.Material.Filled.EmojiEvents"
                                            Adornment="Adornment.Start"
+                                           Dense="true"
                                            HelperText="Select winner to mark game as complete">
                                     <MudSelectItem T="int?" Value="null">Game Not Complete</MudSelectItem>
                                     @if (schedule.HomeTeamId > 0 && allTeams is not null)

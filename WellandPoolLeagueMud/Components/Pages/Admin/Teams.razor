@@ -30,6 +30,7 @@
                                            Label="Choose Team to Edit"
                                            Value="team.TeamId == 0 ? null : team.TeamId"
                                            ValueChanged="async (id) => await LoadTeamAsync(id)"
+                                           Dense="true"
                                            Variant="Variant.Filled">
                                     <MudSelectItem T="int?" Value="null">Create New Team</MudSelectItem>
                                     @if (allTeams is not null)
@@ -60,6 +61,7 @@
                                            @bind-Value:after="UpdateSelectedBar"
                                            Variant="Variant.Filled"
                                            Clearable="true"
+                                           Dense="true"
                                            HelperText="Select the bar where this team plays home games">
                                     <MudSelectItem T="int?" Value="null">No Bar Assigned</MudSelectItem>
                                     @if (availableBars is not null)
@@ -102,6 +104,7 @@
                                            @bind-Value="team.CaptainPlayerId"
                                            Variant="Variant.Filled"
                                            Clearable="true"
+                                           Dense="true"
                                            HelperText="Select a team captain (optional)">
                                     <MudSelectItem T="int?" Value="null">No Captain Selected</MudSelectItem>
                                     @if (allPlayers is not null)

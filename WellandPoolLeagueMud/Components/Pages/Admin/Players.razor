@@ -29,6 +29,7 @@
                                            Label="Choose Player to Edit"
                                            Value="player.PlayerId == 0 ? null : player.PlayerId"
                                            ValueChanged="LoadPlayerAsync"
+                                           Dense="true"
                                            Variant="Variant.Filled">
                                     <MudSelectItem T="int?" Value="null">Create New Player</MudSelectItem>
                                     @if (allPlayers is not null)
@@ -61,6 +62,7 @@
                                            Label="Team"
                                            @bind-Value="player.TeamId"
                                            Variant="Variant.Filled"
+                                           Dense="true"
                                            Clearable="true">
                                     <MudSelectItem T="int?" Value="null">No Team Assigned</MudSelectItem>
                                     @if (allTeams is not null)
@@ -177,6 +179,7 @@
                                        Label="Filter by Team"
                                        Variant="Variant.Outlined"
                                        Margin="Margin.Dense"
+                                       Dense="true"
                                        Clearable="true">
                                 <MudSelectItem T="int?" Value="null">All Teams</MudSelectItem>
                                 @if (allTeams is not null)

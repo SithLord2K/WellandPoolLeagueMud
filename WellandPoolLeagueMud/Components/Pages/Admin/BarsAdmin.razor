@@ -27,6 +27,7 @@
                                 <MudSelect T="int?"
                                            Label="Choose Bar to Edit"
                                            ValueChanged="LoadBarAsync"
+                                           Dense="true"
                                            Variant="Variant.Filled">
                                     <MudSelectItem T="int?" Value="null">Create New Bar</MudSelectItem>
                                     @if (allBars is not null)

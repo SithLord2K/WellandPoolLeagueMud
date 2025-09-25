@@ -30,6 +30,7 @@
                                            Label="Choose Player to Add Games To"
                                            Value="selectedPlayerId"
                                            ValueChanged="LoadPlayerDataAsync"
+                                           Dense="true"
                                            Variant="Variant.Filled">
                                     <MudSelectItem T="int" Value="0">Choose Player To Add Games To</MudSelectItem>
                                     @if (allPlayers is not null)
@@ -57,6 +58,7 @@
                                                Label="Team"
                                                @bind-Value="playerGame.TeamId"
                                                Variant="Variant.Filled"
+                                               Dense="true"
                                                Required>
                                         <MudSelectItem T="int" Value="0">Select Team</MudSelectItem>
                                         @if (allTeams is not null)

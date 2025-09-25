@@ -47,13 +47,13 @@ else
                                                Required="true" Class="mb-3"
                                                PickerVariant="PickerVariant.Dialog"
                                                Variant="Variant.Filled" />
-                                <MudSelect T="DayOfWeek" @bind-Value="_gameDay" Label="Game Day" Required="true" Class="mb-3">
+                                <MudSelect T="DayOfWeek" @bind-Value="_gameDay" Dense="true" Label="Game Day" Required="true" Class="mb-3">
                                     @foreach (DayOfWeek day in Enum.GetValues(typeof(DayOfWeek)))
                                     {
                                         <MudSelectItem T="DayOfWeek" Value="day">@day.ToString()</MudSelectItem>
                                     }
                                 </MudSelect>
-                                <MudSelect T="ScheduleType" @bind-Value="_scheduleType" Label="Schedule Type" Required="true" Class="mb-3">
+                                <MudSelect T="ScheduleType" @bind-Value="_scheduleType" Dense="true" Label="Schedule Type" Required="true" Class="mb-3">
                                     <MudSelectItem T="ScheduleType" Value="ScheduleType.DoubleRoundRobin">Double Round Robin</MudSelectItem>
                                     <MudSelectItem T="ScheduleType" Value="ScheduleType.SingleRoundRobin">Single Round Robin</MudSelectItem>
                                     <MudSelectItem T="ScheduleType" Value="ScheduleType.Custom">Custom (Specify weeks)</MudSelectItem>
@@ -159,7 +159,7 @@ else
                                 </PropertyColumn>
                                 <PropertyColumn Property="x => x.HomeTeamName" Title="Home Team">
                                     <EditTemplate>
-                                        <MudSelect T="int" @bind-Value="context.Item.HomeTeamId">
+                                        <MudSelect T="int" @bind-Value="context.Item.HomeTeamId" Dense="true">
                                             @foreach (var team in _teams)
                                             {
                                                 <MudSelectItem T="int" Value="team.TeamId">@team.TeamName</MudSelectItem>
@@ -169,7 +169,7 @@ else
                                 </PropertyColumn>
                                 <PropertyColumn Property="x => x.AwayTeamName" Title="Away Team">
                                     <EditTemplate>
-                                        <MudSelect T="int" @bind-Value="context.Item.AwayTeamId">
+                                        <MudSelect T="int" @bind-Value="context.Item.AwayTeamId" Dense="true">
                                             @foreach (var team in _teams)
                                             {
                                                 <MudSelectItem T="int" Value="team.TeamId">@team.TeamName</MudSelectItem>
