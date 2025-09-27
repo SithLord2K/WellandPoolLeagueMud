@@ -1,10 +1,12 @@
 ﻿@page "/login_error"
 @attribute [StreamRendering]
-<h3>Login Error</h3>
-Access Denied.
-<br />
+@using WellandPoolLeagueMud.Components.Shared
 
-If you feel you have reached this page in error, please contact the site administrator.
-@code {
+<PageTitle>Login Error</PageTitle>
 
-}
+<PageContainer Title="Login Error">
+    <MudAlert Severity="Severity.Warning">Access Denied.</MudAlert>
+    <MudText Class="mt-4">
+        If you feel you have reached this page in error, please contact the site administrator.
+    </MudText>
+</PageContainer>

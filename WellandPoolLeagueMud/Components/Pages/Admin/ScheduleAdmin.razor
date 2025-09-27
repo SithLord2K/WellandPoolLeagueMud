@@ -3,27 +3,26 @@
 @using WellandPoolLeagueMud.Data.Services
 @using WellandPoolLeagueMud.Data.ViewModels
 @using MudBlazor
+@using WellandPoolLeagueMud.Components.Shared
 @inject ISnackbar Snackbar
-@inject IDialogService DialogService
+@inject IDialogService MudDialogService
+@inject WellandPoolLeagueMud.Data.Services.DialogService DialogService
 @inject IScheduleService ScheduleService
 @inject ITeamService TeamService
 
 <PageTitle>Schedules Administration</PageTitle>
 
-<MudContainer>
-    <MudGrid Justify="Justify.Center" Spacing="4">
-        <MudItem xs="12" sm="10" md="8">
-            <MudPaper Class="pa-4" Elevation="3">
-                <MudText Typo="Typo.h5" Class="mb-4">Add/Edit Schedule</MudText>
-
-                @if (isLoading)
-                {
-                    <div class="d-flex justify-center py-8">
-                        <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
-                    </div>
-                }
-                else
-                {
+<PageContainer Title="Schedules Administration">
+    @if (isLoading)
+    {
+        <Loading Message="Loading schedule data..." />
+    }
+    else
+    {
+        <MudGrid Justify="Justify.Center" Spacing="4">
+            <MudItem xs="12" sm="10" md="8">
+                <MudPaper Class="pa-4" Elevation="3">
+                    <MudText Typo="Typo.h5" Class="mb-4">Add/Edit Schedule</MudText>
                     <MudForm @ref="form" Model="@schedule">
                         <MudGrid>
                             <MudItem xs="12">
@@ -137,7 +136,8 @@
                                     }
                                     @if (schedule.AwayTeamId > 0 && allTeams is not null)
                                     {
-                                        var awayTeam = allTeams.FirstOrDefault(t => t.TeamId == schedule.AwayTeamId);
+                                        var awayTeam =
+                                        allTeams.FirstOrDefault(t => t.TeamId == schedule.AwayTeamId);
                                         if (awayTeam != null)
                                         {
                                             <MudSelectItem T="int?" Value="@schedule.AwayTeamId">@awayTeam.TeamName (Away)</MudSelectItem>
@@ -203,128 +203,126 @@
                             </MudItem>
                         </MudGrid>
                     </MudForm>
-                }
-            </MudPaper>
-        </MudItem>
-
-        @if (allSchedules is not null && allSchedules.Any())
-        {
-            <MudItem xs="12">
-                <MudPaper Class="pa-4" Elevation="3">
-                    <MudText Typo="Typo.h6" Class="mb-4">Current Schedule (@filteredSchedules.Count() games)</MudText>
-
-                    <MudGrid Class="mb-4">
-                        <MudItem xs="12" sm="6">
-                            <MudNumericField T="int?"
-                                             Label="Filter by Week"
-                                             Variant="Variant.Outlined"
-                                             @bind-Value="filterWeekNumber"
-                                             Clearable="true"
-                                             Adornment="Adornment.Start"
-                                             AdornmentIcon="@Icons.Material.Filled.FilterList" />
-                        </MudItem>
-                        <MudItem xs="12" sm="6">
-                            <MudDatePicker Label="Filter by Date"
-                                           Variant="Variant.Outlined"
-                                           @bind-Date="filterGameDate"
-                                           Clearable="true"
-                                           Adornment="Adornment.Start"
-                                           AdornmentIcon="@Icons.Material.Filled.CalendarToday" />
-                        </MudItem>
-                    </MudGrid>
-
-                    <MudTable Items="@filteredSchedules"
-                              Hover="true"
-                              Striped="true"
-                              Dense="true"
-                              T="ScheduleViewModel">
-                        <HeaderContent>
-                            <MudTh>Week</MudTh>
-                            <MudTh>Date</MudTh>
-                            <MudTh>Home Team</MudTh>
-                            <MudTh>Away Team</MudTh>
-                            <MudTh>Winner</MudTh>
-                            <MudTh Style="text-align:center;">Status</MudTh>
-                            <MudTh Style="text-align:center;">Actions</MudTh>
-                        </HeaderContent>
-                        <RowTemplate>
-                            <MudTd DataLabel="Week">
-                                <MudChip T="string">
-                                    Week @context.WeekNumber
-                                </MudChip>
-                            </MudTd>
-                            <MudTd DataLabel="Date">@context.GameDate?.ToShortDateString()</MudTd>
-                            <MudTd DataLabel="Home Team">
-                                @if (context.IsComplete && context.WinningTeamId == context.HomeTeamId)
-                                {
-                                    <MudText Style="font-weight: bold;">@context.HomeTeamName</MudText>
-                                }
-                                else
-                                {
-                                    <MudText>@context.HomeTeamName</MudText>
-                                }
-                            </MudTd>
-                            <MudTd DataLabel="Away Team">
-                                @if (context.IsComplete && context.WinningTeamId == context.AwayTeamId)
-                                {
-                                    <MudText Style="font-weight: bold;">@context.AwayTeamName</MudText>
-                                }
-                                else
-                                {
-                                    <MudText>@context.AwayTeamName</MudText>
-                                }
-                            </MudTd>
-                            <MudTd DataLabel="Winner">
-                                @if (context.IsComplete && !string.IsNullOrEmpty(context.WinningTeamName))
-                                {
-                                    <MudChip T="string" Color="Color.Success" Size="Size.Small" Icon="@Icons.Material.Filled.EmojiEvents">
-                                        @context.WinningTeamName
-                                    </MudChip>
-                                }
-                                else
-                                {
-                                    <MudText Class="mud-text-secondary">-</MudText>
-                                }
-                            </MudTd>
-                            <MudTd DataLabel="Status" Style="text-align:center;">
-                                @if (context.IsComplete)
-                                {
-                                    <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Filled">
-                                        Complete
-                                    </MudChip>
-                                }
-                                else if (context.GameDate?.Date < DateTime.Today)
-                                {
-                                    <MudChip T="string" Color="Color.Warning" Size="Size.Small" Variant="Variant.Filled">
-                                        Pending
-                                    </MudChip>
-                                }
-                                else
-                                {
-                                    <MudChip T="string" Color="Color.Info" Size="Size.Small" Variant="Variant.Filled">
-                                        Scheduled
-                                    </MudChip>
-                                }
-                            </MudTd>
-                            <MudTd DataLabel="Actions" Style="text-align:center;">
-                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                               Color="Color.Primary"
-                                               Size="Size.Small"
-                                               OnClick="@(() => LoadSchedule(context.ScheduleId))" />
-                            </MudTd>
-                        </RowTemplate>
-                        <NoRecordsContent>
-                            <div class="d-flex flex-column align-center pa-4">
-                                <MudIcon Icon="@Icons.Material.Filled.EventBusy" Style="font-size: 2rem; color: var(--mud-palette-text-secondary);" />
-                                <MudText Typo="Typo.body2" Class="mud-text-secondary mt-2">No schedules match the current filters</MudText>
-                            </div>
-                        </NoRecordsContent>
-                    </MudTable>
                 </MudPaper>
             </MudItem>
-        }
-    </MudGrid>
-</MudContainer>
+
+            @if (allSchedules is not null && allSchedules.Any())
+            {
+                <MudItem xs="12">
+                    <MudPaper Class="pa-4" Elevation="3">
+                        <MudText Typo="Typo.h6" Class="mb-4">Current Schedule (@filteredSchedules.Count() games)</MudText>
+
+                        <MudGrid Class="mb-4">
+                            <MudItem xs="12" sm="6">
+                                <MudNumericField T="int?"
+                                                 Label="Filter by Week"
+                                                 Variant="Variant.Outlined"
+                                                 @bind-Value="filterWeekNumber"
+                                                 Clearable="true"
+                                                 Adornment="Adornment.Start"
+                                                 AdornmentIcon="@Icons.Material.Filled.FilterList" />
+                            </MudItem>
+                            <MudItem xs="12" sm="6">
+                                <MudDatePicker Label="Filter by Date"
+                                               Variant="Variant.Outlined"
+                                               @bind-Date="filterGameDate"
+                                               Clearable="true"
+                                               Adornment="Adornment.Start"
+                                               AdornmentIcon="@Icons.Material.Filled.CalendarToday" />
+                            </MudItem>
+                        </MudGrid>
+
+                        <MudTable Items="@filteredSchedules"
+                                  Hover="true"
+                                  Striped="true"
+                                  Dense="true"
+                                  T="ScheduleViewModel">
+                            <HeaderContent>
+                                <MudTh>Week</MudTh>
+                                <MudTh>Date</MudTh>
+                                <MudTh>Home Team</MudTh>
+                                <MudTh>Away Team</MudTh>
+                                <MudTh>Winner</MudTh>
+                                <MudTh Style="text-align:center;">Status</MudTh>
+                                <MudTh Style="text-align:center;">Actions</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd DataLabel="Week">
+                                    <MudChip T="string">
+                                        Week @context.WeekNumber
+                                    </MudChip>
+                                </MudTd>
+                                <MudTd DataLabel="Date">@context.GameDate?.ToShortDateString()</MudTd>
+                                <MudTd DataLabel="Home Team">
+                                    @if (context.IsComplete && context.WinningTeamId == context.HomeTeamId)
+                                    {
+                                        <MudText Style="font-weight: bold;">@context.HomeTeamName</MudText>
+                                    }
+                                    else
+                                    {
+                                        <MudText>@context.HomeTeamName</MudText>
+                                    }
+                                </MudTd>
+                                <MudTd DataLabel="Away Team">
+                                    @if (context.IsComplete && context.WinningTeamId == context.AwayTeamId)
+                                    {
+                                        <MudText Style="font-weight: bold;">@context.AwayTeamName</MudText>
+                                    }
+                                    else
+                                    {
+                                        <MudText>@context.AwayTeamName</MudText>
+                                    }
+                                </MudTd>
+                                <MudTd DataLabel="Winner">
+                                    @if (context.IsComplete && !string.IsNullOrEmpty(context.WinningTeamName))
+                                    {
+                                        <MudChip T="string" Color="Color.Success" Size="Size.Small" Icon="@Icons.Material.Filled.EmojiEvents">
+                                            @context.WinningTeamName
+                                        </MudChip>
+                                    }
+                                    else
+                                    {
+                                        <MudText Class="mud-text-secondary">-</MudText>
+                                    }
+                                </MudTd>
+                                <MudTd DataLabel="Status" Style="text-align:center;">
+                                    @if (context.IsComplete)
+                                    {
+                                        <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Filled">
+                                            Complete
+                                        </MudChip>
+                                    }
+                                    else if (context.GameDate?.Date < DateTime.Today)
+                                    {
+                                        <MudChip T="string" Color="Color.Warning" Size="Size.Small" Variant="Variant.Filled">
+                                            Pending
+                                        </MudChip>
+                                    }
+                                    else
+                                    {
+                                        <MudChip T="string" Color="Color.Info" Size="Size.Small" Variant="Variant.Filled">
+                                            Scheduled
+                                        </MudChip>
+                                    }
+                                </MudTd>
+                                <MudTd DataLabel="Actions" Style="text-align:center;">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                   Color="Color.Primary"
+                                                   Size="Size.Small"
+                                                   OnClick="@(() => LoadSchedule(context.ScheduleId))" />
+                                </MudTd>
+                            </RowTemplate>
+                            <NoRecordsContent>
+                                <EmptyState Title="No Schedules Found" Message="No schedules match the current filters." Icon="@Icons.Material.Filled.EventBusy" />
+                            </NoRecordsContent>
+                        </MudTable>
+                    </MudPaper>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+</PageContainer>
+
 
 @code {
     private MudForm form = new();
@@ -370,7 +368,6 @@
     private void LoadSchedule(int scheduleId)
     {
         selectedScheduleId = scheduleId;
-
         if (scheduleId > 0)
         {
             var loadedSchedule = allSchedules?.FirstOrDefault(s => s.ScheduleId == scheduleId);
@@ -408,7 +405,6 @@
                 .Where(s => s.WeekNumber == schedule.WeekNumber && s.ScheduleId != selectedScheduleId)
                 .SelectMany(s => new[] { s.HomeTeamId, s.AwayTeamId })
                 .ToHashSet();
-
             if (teamsInWeek.Contains(schedule.HomeTeamId))
             {
                 Snackbar.Add($"Error: Home Team is already scheduled for Week {schedule.WeekNumber}.", Severity.Error);
@@ -427,7 +423,6 @@
         try
         {
             bool isNewSchedule = selectedScheduleId == 0;
-
             if (isNewSchedule)
             {
                 var result = await ScheduleService.CreateScheduleAsync(schedule);
@@ -435,18 +430,16 @@
 
                 var dateToKeep = schedule.GameDate;
                 var weekToKeep = schedule.WeekNumber;
-
                 var parameters = new DialogParameters
                 {
                     ["Message"] = "Do you want to add another game for this date?",
                     ["YesText"] = "Yes, Add Another",
                     ["NoText"] = "No, I'm Done"
                 };
-                var dialog = await DialogService.ShowAsync<MudMessageBox>("Add Another?", parameters);
+                var dialog = await MudDialogService.ShowAsync<MudMessageBox>("Add Another?", parameters);
                 var dialogResult = await dialog.Result;
 
                 await LoadDataAsync();
-
                 if (dialogResult is { Canceled: false, Data: true })
                 {
                     ResetFormForAnotherEntry(dateToKeep, weekToKeep);
@@ -486,28 +479,36 @@
     {
         if (selectedScheduleId == 0) return;
 
-        isProcessing = true;
-        try
+        bool confirmed = await DialogService.ShowConfirmationDialog(
+            "Confirm Deletion",
+            "Are you sure you want to delete this schedule entry?"
+        );
+
+        if (confirmed)
         {
-            var success = await ScheduleService.DeleteScheduleAsync(selectedScheduleId);
-            if (success)
+            isProcessing = true;
+            try
             {
-                Snackbar.Add("Schedule deleted successfully!", Severity.Success);
-                await LoadDataAsync();
-                ResetForm();
+                var success = await ScheduleService.DeleteScheduleAsync(selectedScheduleId);
+                if (success)
+                {
+                    Snackbar.Add("Schedule deleted successfully!", Severity.Success);
+                    await LoadDataAsync();
+                    ResetForm();
+                }
+                else
+                {
+                    Snackbar.Add("Failed to delete schedule", Severity.Error);
+                }
             }
-            else
+            catch (Exception ex)
             {
-                Snackbar.Add("Failed to delete schedule", Severity.Error);
+                Snackbar.Add($"Error deleting schedule: {ex.Message}", Severity.Error);
             }
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error deleting schedule: {ex.Message}", Severity.Error);
-        }
-        finally
-        {
-            isProcessing = false;
+            finally
+            {
+                isProcessing = false;
+            }
         }
     }
 

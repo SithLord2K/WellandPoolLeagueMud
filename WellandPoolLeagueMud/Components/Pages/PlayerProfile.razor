@@ -6,6 +6,7 @@
 @using WellandPoolLeagueMud.Data.Models
 @using WellandPoolLeagueMud.Data.Services
 @using WellandPoolLeagueMud.Data.ViewModels
+@using WellandPoolLeagueMud.Components.Shared
 @inject IUserProfileService UserProfileService
 @inject IPlayerService PlayerService
 @inject AuthenticationStateProvider AuthenticationStateProvider
@@ -13,158 +14,160 @@
 
 <PageTitle>My Profile</PageTitle>
 
-@if (_userProfile == null)
-{
-    <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
-}
-else
-{
-    <MudGrid Spacing="4">
-        <MudItem xs="12" md="4">
-            <MudPaper Class="pa-4 d-flex flex-column align-center" Elevation="3">
-                <MudAvatar Color="Color.Primary" Style="height:150px; width:150px; font-size:4rem;">
-                    @if (!string.IsNullOrEmpty(_picture))
+<PageContainer Title="My Profile">
+    @if (_userProfile == null)
+    {
+        <Loading Message="Loading profile..." />
+    }
+    else
+    {
+        <MudGrid Spacing="4">
+            <MudItem xs="12" md="4">
+                <MudPaper Class="pa-4 d-flex flex-column align-center" Elevation="3">
+                    <MudAvatar Color="Color.Primary" Style="height:150px; width:150px; font-size:4rem;">
+                        @if (!string.IsNullOrEmpty(_picture))
+                        {
+                            <MudImage Src="@_picture" Alt="Profile Picture" />
+                        }
+                        else
+                        {
+                            @_initials
+                        }
+                    </MudAvatar>
+                    <MudText Typo="Typo.h5" Class="mt-4">@_userProfile.FirstName @_userProfile.LastName</MudText>
+                    @if (!string.IsNullOrEmpty(_email))
                     {
-                        <MudImage Src="@_picture" Alt="Profile Picture" />
+                        <MudText Typo="Typo.body1" Class="mud-text-secondary">@_email</MudText>
                     }
                     else
                     {
-                        @_initials
+                        <MudText Typo="Typo.body1" Class="mud-text-secondary">@(_nickname ?? _userName ?? "User")</MudText>
                     }
-                </MudAvatar>
-                <MudText Typo="Typo.h5" Class="mt-4">@_userProfile.FirstName @_userProfile.LastName</MudText>
-                @if (!string.IsNullOrEmpty(_email))
-                {
-                    <MudText Typo="Typo.body1" Class="mud-text-secondary">@_email</MudText>
-                }
-                else
-                {
-                    <MudText Typo="Typo.body1" Class="mud-text-secondary">@(_nickname ?? _userName ?? "User")</MudText>
-                }
 
-                @if (_registrationDateTime.HasValue)
-                {
-                    <MudText Typo="Typo.caption" Class="mt-2">Registered on: @_registrationDateTime.Value.ToShortDateString()</MudText>
-                }
-
-                <div class="d-flex flex-wrap gap-1 mt-4">
-                    @foreach (var role in _roles)
+                    @if (_registrationDateTime.HasValue)
                     {
-                        <MudChip T="string" Color="Color.Primary" Size="Size.Small">@role</MudChip>
+                        <MudText Typo="Typo.caption" Class="mt-2">Registered on: @_registrationDateTime.Value.ToShortDateString()</MudText>
                     }
-                </div>
-            </MudPaper>
-        </MudItem>
 
-        <MudItem xs="12" md="8">
-            <MudCard Elevation="3">
-                <MudTabs Elevation="2" Rounded="true" PanelClass="pa-4">
-                    <MudTabPanel Text="Profile Details">
-                        <MudForm @ref="_form" @bind-IsValid="_isFormValid">
-                            <MudCardContent>
-                                <MudGrid>
-                                    <MudItem xs="12" sm="6">
-                                        <MudTextField @bind-Value="_userProfile.FirstName" For="@(() => _userProfile.FirstName)" Label="First Name" Variant="Variant.Outlined" />
-                                    </MudItem>
-                                    <MudItem xs="12" sm="6">
-                                        <MudTextField @bind-Value="_userProfile.LastName" For="@(() => _userProfile.LastName)" Label="Last Name" Variant="Variant.Outlined" />
-                                    </MudItem>
-                                    <MudItem xs="12">
-                                        <MudTextField @bind-Value="_userProfile.PhoneNumber" For="@(() => _userProfile.PhoneNumber)" Label="Phone Number" Variant="Variant.Outlined" />
-                                    </MudItem>
-                                    <MudItem xs="12">
-                                        <MudTextField @bind-Value="_userProfile.Bio" For="@(() => _userProfile.Bio)" Label="About Me / Bio" Variant="Variant.Outlined" Lines="4" />
-                                    </MudItem>
-                                </MudGrid>
-                            </MudCardContent>
-                            <MudCardActions Class="px-4 pb-4">
-                                <MudButton Variant="Variant.Filled"
-                                           Color="Color.Primary"
-                                           OnClick="SaveChanges"
-                                           Disabled="@_isSaving"
-                                           Class="ml-auto">
-                                    @if (_isSaving)
-                                    {
-                                        <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
-                                        <MudText Class="ms-2">Saving...</MudText>
-                                    }
-                                    else
-                                    {
-                                        <text>Save Changes</text>
-                                    }
-                                </MudButton>
-                            </MudCardActions>
-                        </MudForm>
-                    </MudTabPanel>
-                    @if (_userViewModel?.SeasonStats != null && _userViewModel.SeasonStats.Any())
-                    {
-                        var currentSeason = _userViewModel.SeasonStats.First();
-                        <MudTabPanel Text="@($"Current Season ({currentSeason.Season})")">
-                            <MudSimpleTable>
-                                <thead>
-                                    <tr>
-                                        <th>Games Played</th>
-                                        <th>Wins</th>
-                                        <th>Losses</th>
-                                        <th>Win Percentage</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>@currentSeason.GamesPlayed</td>
-                                        <td>@currentSeason.Wins</td>
-                                        <td>@currentSeason.Losses</td>
-                                        <td>@currentSeason.WinPercentage.ToString("F1")%</td>
-                                    </tr>
-                                </tbody>
-                            </MudSimpleTable>
-                        </MudTabPanel>
-
-                        @if (_userViewModel.SeasonStats.Count > 1)
+                    <div class="d-flex flex-wrap gap-1 mt-4">
+                        @foreach (var role in _roles)
                         {
-                            <MudTabPanel Text="Past Seasons">
-                                <MudList T="PlayerSeasonStatsViewModel">
-                                    @foreach (var season in _userViewModel.SeasonStats.Skip(1))
-                                    {
-                                        <MudListItem T="PlayerSeasonStatsViewModel">
-                                            <MudCard>
-                                                <MudCardHeader>
-                                                    <CardHeaderContent>
-                                                        <MudText Typo="Typo.h6">@season.Season</MudText>
-                                                    </CardHeaderContent>
-                                                </MudCardHeader>
-                                                <MudCardContent>
-                                                    <MudSimpleTable>
-                                                        <thead>
-                                                            <tr>
-                                                                <th>Games Played</th>
-                                                                <th>Wins</th>
-                                                                <th>Losses</th>
-                                                                <th>Win Percentage</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            <tr>
-                                                                <td>@season.GamesPlayed</td>
-                                                                <td>@season.Wins</td>
-                                                                <td>@season.Losses</td>
-                                                                <td>@season.WinPercentage.ToString("F1")%</td>
-                                                            </tr>
-                                                        </tbody>
-                                                    </MudSimpleTable>
-                                                </MudCardContent>
-                                            </MudCard>
-                                        </MudListItem>
-                                    }
-                                </MudList>
-                            </MudTabPanel>
+                            <MudChip T="string" Color="Color.Primary" Size="Size.Small">@role</MudChip>
                         }
-                    }
-                </MudTabs>
-            </MudCard>
-        </MudItem>
-    </MudGrid>
-}
+                    </div>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" md="8">
+                <MudCard Elevation="3">
+                    <MudTabs Elevation="2" Rounded="true" PanelClass="pa-4">
+                        <MudTabPanel Text="Profile Details">
+                            <MudForm @ref="_form" @bind-IsValid="_isFormValid">
+                                <MudCardContent>
+                                    <MudGrid>
+                                        <MudItem xs="12" sm="6">
+                                            <MudTextField @bind-Value="_userProfile.FirstName" For="@(() => _userProfile.FirstName)" Label="First Name" Variant="Variant.Outlined" />
+                                        </MudItem>
+                                        <MudItem xs="12" sm="6">
+                                            <MudTextField @bind-Value="_userProfile.LastName" For="@(() => _userProfile.LastName)" Label="Last Name" Variant="Variant.Outlined" />
+                                        </MudItem>
+                                        <MudItem xs="12">
+                                            <MudTextField @bind-Value="_userProfile.PhoneNumber" For="@(() => _userProfile.PhoneNumber)" Label="Phone Number" Variant="Variant.Outlined" />
+                                        </MudItem>
+                                        <MudItem xs="12">
+                                            <MudTextField @bind-Value="_userProfile.Bio" For="@(() => _userProfile.Bio)" Label="About Me / Bio" Variant="Variant.Outlined" Lines="4" />
+                                        </MudItem>
+                                    </MudGrid>
+                                </MudCardContent>
+                                <MudCardActions Class="px-4 pb-4">
+                                    <MudButton Variant="Variant.Filled"
+                                               Color="Color.Primary"
+                                               OnClick="SaveChanges"
+                                               Disabled="@_isSaving"
+                                               Class="ml-auto">
+                                        @if (_isSaving)
+                                        {
+                                            <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                                            <MudText Class="ms-2">Saving...</MudText>
+                                        }
+                                        else
+                                        {
+                                            <text>Save Changes</text>
+                                        }
+                                    </MudButton>
+                                </MudCardActions>
+                            </MudForm>
+                        </MudTabPanel>
+                        @if (_userViewModel?.SeasonStats != null && _userViewModel.SeasonStats.Any())
+                        {
+                            var currentSeason = _userViewModel.SeasonStats.First();
+                            <MudTabPanel Text="@($"Current Season ({currentSeason.Season})")">
+                                <MudSimpleTable>
+                                    <thead>
+                                        <tr>
+                                            <th>Games Played</th>
+                                            <th>Wins</th>
+                                            <th>Losses</th>
+                                            <th>Win Percentage</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>@currentSeason.GamesPlayed</td>
+                                            <td>@currentSeason.Wins</td>
+                                            <td>@currentSeason.Losses</td>
+                                            <td>@currentSeason.WinPercentage.ToString("F1")%</td>
+                                        </tr>
+                                    </tbody>
+                                </MudSimpleTable>
+                            </MudTabPanel>
+
+                            @if (_userViewModel.SeasonStats.Count > 1)
+                            {
+                                <MudTabPanel Text="Past Seasons">
+                                    <MudList T="PlayerSeasonStatsViewModel">
+                                        @foreach (var season in _userViewModel.SeasonStats.Skip(1))
+                                        {
+                                            <MudListItem T="PlayerSeasonStatsViewModel">
+                                                <MudCard>
+                                                    <MudCardHeader>
+                                                        <CardHeaderContent>
+                                                            <MudText Typo="Typo.h6">@season.Season</MudText>
+                                                        </CardHeaderContent>
+                                                    </MudCardHeader>
+                                                    <MudCardContent>
+                                                        <MudSimpleTable>
+                                                            <thead>
+                                                                <tr>
+                                                                    <th>Games Played</th>
+                                                                    <th>Wins</th>
+                                                                    <th>Losses</th>
+                                                                    <th>Win Percentage</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                <tr>
+                                                                    <td>@season.GamesPlayed</td>
+                                                                    <td>@season.Wins</td>
+                                                                    <td>@season.Losses</td>
+                                                                    <td>@season.WinPercentage.ToString("F1")%</td>
+                                                                </tr>
+                                                            </tbody>
+                                                        </MudSimpleTable>
+                                                    </MudCardContent>
+                                                </MudCard>
+                                            </MudListItem>
+                                        }
+                                    </MudList>
+                                </MudTabPanel>
+                            }
+                        }
+                    </MudTabs>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+    }
+</PageContainer>
 
 
 @code {

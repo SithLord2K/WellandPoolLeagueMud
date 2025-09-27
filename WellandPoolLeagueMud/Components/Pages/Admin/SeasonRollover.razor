@@ -1,116 +1,121 @@
 ﻿@page "/admin/season-rollover"
+@attribute [Authorize(Roles = "Super_User")]
 @using Microsoft.EntityFrameworkCore
 @using WellandPoolLeagueMud.Components.Dialogs
 @using WellandPoolLeagueMud.Data
+@using WellandPoolLeagueMud.Components.Shared
+@using WellandPoolLeagueMud.Data.Services
 @inject IDbContextFactory<WellandPoolLeagueDbContext> DbContextFactory
 @inject ISnackbar Snackbar
-@inject IDialogService DialogService
+@inject WellandPoolLeagueMud.Data.Services.DialogService DialogService
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-8">
-    <MudPaper Class="pa-6" Elevation="3">
-        <MudText Typo="Typo.h4" GutterBottom="true">League Season Rollover</MudText>
-        <MudText Color="Color.Info" Class="mb-4">
-            This utility will directly execute a script against the database to:
-            <MudList T="string">
-                <MudListItem Icon="@Icons.Material.Filled.Backup">Back up selected league tables for a new season.</MudListItem>
-                <MudListItem Icon="@Icons.Material.Filled.CleaningServices">Reset player team assignments by setting their team to NULL.</MudListItem>
-                <MudListItem Icon="@Icons.Material.Filled.DeleteForever">Clear and reseed the selected tables (excluding Players).</MudListItem>
-            </MudList>
-        </MudText>
+<PageTitle>Season Rollover</PageTitle>
 
-        @* Step 1: Table Selection *@
-        <MudCard Class="mb-6">
-            <MudCardHeader>
-                <CardHeaderContent>
-                    <MudText Typo="Typo.h6">Step 1: Select Tables to Back Up & Reset</MudText>
-                    <MudText Typo="Typo.body2">
-                        Choose tables to back up. <strong>Note:</strong> If 'Players' is selected, it will be backed up and team links reset, but player data will <strong>not</strong> be deleted. 'UserProfiles' are always excluded.
-                    </MudText>
-                </CardHeaderContent>
-            </MudCardHeader>
-            <MudCardContent>
-                @if (_tables.Any())
+<PageContainer Title="League Season Rollover">
+    <MudText Color="Color.Info" Class="mb-4">
+        This utility will directly execute a script against the database to:
+        <MudList T="string">
+            <MudListItem Icon="@Icons.Material.Filled.Backup">Back up selected league tables for a new season.</MudListItem>
+            <MudListItem Icon="@Icons.Material.Filled.CleaningServices">Reset player team assignments by setting their team to NULL.</MudListItem>
+            <MudListItem Icon="@Icons.Material.Filled.DeleteForever">Clear and reseed the selected tables (excluding Players).</MudListItem>
+        </MudList>
+    </MudText>
+
+    @* Step 1: Table Selection *@
+    <MudCard Class="mb-6">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h6">Step 1: Select Tables to Back Up & Reset</MudText>
+                <MudText Typo="Typo.body2">
+                    Choose tables to back up.
+                    <strong>Note:</strong> If 'Players' is selected, it will be backed up and team links reset, but player data will <strong>not</strong> be deleted.
+                    'UserProfiles' are always excluded.
+                </MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            @if (_tables.Any())
+            {
+                <MudGrid Spacing="2">
+                    @for (int i = 0; i < _tables.Count; i++)
+                    {
+                        var tableIndex = i;
+                        <MudItem xs="12" sm="6" md="4" lg="3" @key="_tables[tableIndex].DbName">
+                            <MudCheckBox T="bool"
+                                         Value="@_tables[tableIndex].IsSelected"
+                                         ValueChanged="@((bool newValue) => OnCheckboxChanged(tableIndex, newValue))"
+                                         Label="@_tables[tableIndex].DisplayName"
+                                         Color="Color.Primary" />
+                        </MudItem>
+                    }
+                </MudGrid>
+            }
+            else
+            {
+                <Loading Message="Loading table list..." />
+            }
+        </MudCardContent>
+        <MudCardActions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SelectAll" StartIcon="@Icons.Material.Filled.SelectAll">Select All</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="DeselectAll" StartIcon="@Icons.Material.Filled.Deselect">Deselect All</MudButton>
+        </MudCardActions>
+    </MudCard>
+
+    @* Step 2: Action *@
+    <MudCard Class="mb-6">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h6">Step 2: Execute Rollover Script</MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <MudAlert Severity="Severity.Error" Class="mb-4">
+                <strong>DANGER:</strong> This action will permanently alter the database.
+                Always perform a full manual backup before proceeding. This cannot be undone.
+            </MudAlert>
+            <MudText Typo="Typo.body2" Class="mb-2">
+                Selected tables: @(_tables.Count(t => t.IsSelected)) of @_tables.Count
+            </MudText>
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Error"
+                       OnClick="ConfirmAndExecuteScript"
+                       Disabled="@(!_tables.Any(t => t.IsSelected) || _isProcessing)"
+                       StartIcon="@Icons.Material.Filled.Warning">
+                @if (_isProcessing)
                 {
-                    <MudGrid Spacing="2">
-                        @for (int i = 0; i < _tables.Count; i++)
-                        {
-                            var tableIndex = i; // Capture index for closure
-                                                <MudItem xs="12" sm="6" md="4" lg="3" @key="_tables[tableIndex].DbName">
-                                                    <MudCheckBox T="bool"
-                                                                 Value="@_tables[tableIndex].IsSelected"
-                                                                 ValueChanged="@((bool newValue) => OnCheckboxChanged(tableIndex, newValue))"
-                                                                 Label="@_tables[tableIndex].DisplayName"
-                                                                 Color="Color.Primary" />
-                                                </MudItem>
-                        }
-                    </MudGrid>
+                    <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                    <span class="ms-2">Processing...</span>
                 }
                 else
                 {
-                    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                    <span>Execute Season Rollover</span>
                 }
-            </MudCardContent>
-            <MudCardActions>
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SelectAll" StartIcon="@Icons.Material.Filled.SelectAll">Select All</MudButton>
-                <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="DeselectAll" StartIcon="@Icons.Material.Filled.Deselect">Deselect All</MudButton>
-            </MudCardActions>
-        </MudCard>
+            </MudButton>
+        </MudCardContent>
+    </MudCard>
 
-        @* Step 2: Action *@
-        <MudCard Class="mb-6">
+    @* Step 3: Result Log *@
+    @if (!string.IsNullOrEmpty(_executionLog))
+    {
+        <MudCard>
             <MudCardHeader>
                 <CardHeaderContent>
-                    <MudText Typo="Typo.h6">Step 2: Execute Rollover Script</MudText>
+                    <MudText Typo="Typo.h6">Step 3: Execution Result</MudText>
                 </CardHeaderContent>
             </MudCardHeader>
             <MudCardContent>
-                <MudAlert Severity="Severity.Error" Class="mb-4">
-                    <strong>DANGER:</strong> This action will permanently alter the database. Always perform a full manual backup before proceeding. This cannot be undone.
-                </MudAlert>
-                <MudText Typo="Typo.body2" Class="mb-2">
-                    Selected tables: @(_tables.Count(t => t.IsSelected)) of @_tables.Count
-                </MudText>
-                <MudButton Variant="Variant.Filled"
-                           Color="Color.Error"
-                           OnClick="ConfirmAndExecuteScript"
-                           Disabled="@(!_tables.Any(t => t.IsSelected) || _isProcessing)"
-                           StartIcon="@Icons.Material.Filled.Warning">
-                    @if (_isProcessing)
-                    {
-                        <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
-                        <span class="ms-2">Processing...</span>
-                    }
-                    else
-                    {
-                        <span>Execute Season Rollover</span>
-                    }
-                </MudButton>
+                <MudAlert Severity="_logSeverity" Variant="Variant.Outlined">@((MarkupString)_executionLog)</MudAlert>
             </MudCardContent>
         </MudCard>
+    }
+</PageContainer>
 
-        @* Step 3: Result Log *@
-        @if (!string.IsNullOrEmpty(_executionLog))
-        {
-            <MudCard>
-                <MudCardHeader>
-                    <CardHeaderContent>
-                        <MudText Typo="Typo.h6">Step 3: Execution Result</MudText>
-                    </CardHeaderContent>
-                </MudCardHeader>
-                <MudCardContent>
-                    <MudAlert Severity="_logSeverity" Variant="Variant.Outlined">@((MarkupString)_executionLog)</MudAlert>
-                </MudCardContent>
-            </MudCard>
-        }
-    </MudPaper>
-</MudContainer>
 
 @code {
     private List<TableSelection> _tables = new();
     private bool _isProcessing = false;
     private string _executionLog = string.Empty;
     private Severity _logSeverity = Severity.Normal;
-
     private readonly List<string> _dependencyOrder = new()
     {
         "WPLMud_Bars",
@@ -134,7 +139,6 @@
         var tempTableList = new List<TableSelection>();
 
         var allEntityTypes = context.Model.GetEntityTypes();
-
         foreach (var entityType in allEntityTypes)
         {
             var tableName = entityType.GetTableName();
@@ -149,7 +153,6 @@
                 DisplayName = tableName.Replace("WPLMud_", ""),
                 IsSelected = false
             };
-
             tempTableList.Add(newTableSelection);
         }
 
@@ -182,17 +185,13 @@
 
     private async Task ConfirmAndExecuteScript()
     {
-        var parameters = new DialogParameters
-        {
-            ["ContentText"] = "This will permanently alter the database and cannot be undone. Are you sure you want to proceed with the season rollover?",
-            ["ButtonText"] = "Yes, Execute Now",
-            ["Color"] = Color.Error
-        };
+        bool confirmed = await DialogService.ShowConfirmationDialog(
+            "Confirm Database Execution",
+            "This will permanently alter the database and cannot be undone. Are you sure you want to proceed with the season rollover?",
+            "Yes, Execute Now"
+        );
 
-        var dialog = await DialogService.ShowAsync<ConfirmExecutionDialog>("Confirm Database Execution", parameters);
-        var result = await dialog.Result;
-
-        if (result != null && !result.Canceled && result.Data is true)
+        if (confirmed)
         {
             await ExecuteScript();
         }
@@ -219,7 +218,6 @@
         builder.AppendLine("BEGIN TRANSACTION;");
         builder.AppendLine("BEGIN TRY");
         logBuilder.AppendLine("Starting season rollover process...");
-
         foreach (var tableName in selectedTables)
         {
             var backupTableName = $"{tableName}_Season_{seasonYear}";
@@ -238,7 +236,6 @@
             .Where(t => t != "WPLMud_Players")
             .OrderByDescending(t => _dependencyOrder.IndexOf(t))
             .ToList();
-
         if (tablesToClear.Any())
         {
             foreach (var tableName in tablesToClear)
@@ -255,7 +252,6 @@
         builder.AppendLine("    IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;");
         builder.AppendLine("    THROW;");
         builder.AppendLine("END CATCH;");
-
         try
         {
             await using var context = await DbContextFactory.CreateDbContextAsync();

@@ -4,72 +4,68 @@
 @using WellandPoolLeagueMud.Components.Buttons
 @using WellandPoolLeagueMud.Data.Services
 @using WellandPoolLeagueMud.Data.ViewModels
+@using WellandPoolLeagueMud.Components.Shared
 @inject ITeamService TeamService
 @inject ISnackbar Snackbar
 
 <PageTitle>Team Standings</PageTitle>
 
-@if (teamStandings is not null)
-{
-    <MudDataGrid T="TeamStandingViewModel"
-                 Items="@teamStandings"
-                 Hover="true"
-                 Striped="true"
-                 Dense="true"
-                 Filterable="true"
-                 Bordered="true"
-                 Class="pb-2">
-        <ToolBarContent>
-            <MudText Typo="Typo.h6">Team Standings</MudText>
-            <MudSpacer />
-            <MudTextField @bind-Value="searchString"
-                          Placeholder="Search teams..."
-                          Adornment="Adornment.Start"
-                          AdornmentIcon="@Icons.Material.Filled.Search"
-                          IconSize="Size.Medium"
-                          Class="mt-0"
-                          Immediate="true" />
-        </ToolBarContent>
-        <Columns>
-            <PropertyColumn Property="x => x.Division" Title="Division" Filterable="true" />
-            <PropertyColumn Property="x => x.TeamName" Title="Team Name" Filterable="true" />
-            <PropertyColumn Property="x => x.CaptainName" Title="Captain" Filterable="true">
-                <CellTemplate>
-                    @if (!string.IsNullOrEmpty(context.Item.CaptainName))
-                    {
-                        <MudText>@context.Item.CaptainName</MudText>
-                    }
-                    else
-                    {
-                        <MudText Class="mud-text-secondary">No Captain</MudText>
-                    }
-                </CellTemplate>
-            </PropertyColumn>
-            <PropertyColumn Property="x => x.WeeksWon" Title="Weeks Won" />
-            <PropertyColumn Property="x => x.GamesPlayed" Title="Games Played" />
-            <PropertyColumn Property="x => x.Wins" Title="Games Won" />
-            <PropertyColumn Property="x => x.Losses" Title="Games Lost" />
-        </Columns>
-        <PagerContent>
-            <MudDataGridPager T="TeamStandingViewModel" />
-        </PagerContent>
-        <NoRecordsContent>
-            <div class="box">
-                <MudIcon Icon="@Icons.Material.Filled.Groups" Style="font-size: 3rem; color: var(--mud-palette-text-secondary);" />
-                <MudText Typo="Typo.h6" Class="mt-2">No Team Stats Found!</MudText>
-                <MudText Typo="Typo.body2" Class="mud-text-secondary">
-                    Team standings will appear here once games are recorded.
-                </MudText>
-            </div>
-        </NoRecordsContent>
-    </MudDataGrid>
-}
-else
-{
-    <MudContainer Class="d-flex justify-center align-center" Style="height: 200px;">
-        <MudProgressCircular Indeterminate="true" Size="Size.Large" />
-    </MudContainer>
-}
+<PageContainer Title="Team Standings">
+    @if (teamStandings is null)
+    {
+        <Loading Message="Loading standings..." />
+    }
+    else
+    {
+        <MudDataGrid T="TeamStandingViewModel"
+                     Items="@teamStandings"
+                     Hover="true"
+                     Striped="true"
+                     Dense="true"
+                     Filterable="true"
+                     Bordered="true"
+                     Class="pb-2">
+            <ToolBarContent>
+                <MudSpacer />
+                <MudTextField @bind-Value="searchString"
+                              Placeholder="Search teams..."
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              IconSize="Size.Medium"
+                              Class="mt-0"
+                              Immediate="true" />
+            </ToolBarContent>
+            <Columns>
+                <PropertyColumn Property="x => x.Division" Title="Division" Filterable="true" />
+                <PropertyColumn Property="x => x.TeamName" Title="Team Name" Filterable="true" />
+                <PropertyColumn Property="x => x.CaptainName" Title="Captain" Filterable="true">
+                    <CellTemplate>
+                        @if (!string.IsNullOrEmpty(context.Item.CaptainName))
+                        {
+                            <MudText>@context.Item.CaptainName</MudText>
+                        }
+                        else
+                        {
+                            <MudText Class="mud-text-secondary">No Captain</MudText>
+                        }
+                    </CellTemplate>
+                </PropertyColumn>
+                <PropertyColumn Property="x => x.WeeksWon" Title="Weeks Won" />
+                <PropertyColumn Property="x => x.GamesPlayed" Title="Games Played" />
+                <PropertyColumn Property="x => x.Wins" Title="Games Won" />
+                <PropertyColumn Property="x => x.Losses" Title="Games Lost" />
+            </Columns>
+            <PagerContent>
+                <MudDataGridPager T="TeamStandingViewModel" />
+            </PagerContent>
+            <NoRecordsContent>
+                <EmptyState Title="No Team Stats Found!"
+                            Message="Team standings will appear here once games are recorded."
+                            Icon="@Icons.Material.Filled.Groups" />
+            </NoRecordsContent>
+        </MudDataGrid>
+    }
+</PageContainer>
 
 <ScrollToTopButton />
 
@@ -101,29 +97,6 @@ else
             Snackbar.Add("Error loading team standings. Please try again later.", Severity.Error);
             teamStandings = new List<TeamStandingViewModel>();
         }
-    }
-
-    private Color GetRankColor(int rank)
-    {
-        return rank switch
-        {
-            1 => Color.Warning,
-            2 => Color.Secondary,
-            3 => Color.Tertiary,
-            _ => Color.Default
-        };
-    }
-
-    private Color GetWinPercentageColor(decimal winPercentage)
-    {
-        return winPercentage switch
-        {
-            >= 75 => Color.Success,
-            >= 60 => Color.Info,
-            >= 50 => Color.Warning,
-            >= 25 => Color.Secondary,
-            _ => Color.Error
-        };
     }
 
     private async Task OnSearchChanged(string value)

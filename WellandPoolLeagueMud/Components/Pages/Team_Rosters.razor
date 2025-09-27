@@ -4,13 +4,19 @@
 @using WellandPoolLeagueMud.Data.Services
 @using WellandPoolLeagueMud.Data.ViewModels
 @using MudBlazor
+@using WellandPoolLeagueMud.Components.Shared
+@using WellandPoolLeagueMud.Helpers
 @inject ITeamService TeamService
 
 <PageTitle>Team Rosters</PageTitle>
 
-@if (teams is not null)
-{
-    <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="px-2">
+<PageContainer Title="Team Rosters">
+    @if (teams is null)
+    {
+        <Loading Message="Loading team rosters..." />
+    }
+    else
+    {
         <div class="d-flex justify-center mb-4">
             <MudTextField @bind-Value="searchString"
                           Placeholder="Search teams or players..."
@@ -75,7 +81,7 @@
                                 <MudTd DataLabel="Win %" Style="text-align:center;">
                                     @if (context.GamesPlayed > 0)
                                     {
-                                        <MudChip T="string" Color="@GetWinPercentageColor(context.WinPercentage)" Size="Size.Small">
+                                        <MudChip T="string" Color="@ColorHelper.GetWinPercentageColor(context.WinPercentage)" Size="Size.Small">
                                             @context.WinPercentage.ToString("F1")%
                                         </MudChip>
                                     }
@@ -95,10 +101,7 @@
                     }
                     else
                     {
-                        <div class="d-flex flex-column align-center pa-4">
-                            <MudIcon Icon="@Icons.Material.Filled.PersonOff" Style="font-size: 2rem; color: var(--mud-palette-text-secondary);" />
-                            <MudText Typo="Typo.body2" Class="mud-text-secondary mt-2">No players assigned to this team</MudText>
-                        </div>
+                        <EmptyState Title="No Players Assigned" Message="No players have been assigned to this team yet." Icon="@Icons.Material.Filled.PersonOff" />
                     }
                 </MudCardContent>
                 <MudCardActions Class="d-flex justify-space-between px-4">
@@ -119,28 +122,10 @@
 
         @if (!filteredTeams.Any() && !string.IsNullOrWhiteSpace(searchString))
         {
-            <MudCard Class="pa-4">
-                <div class="d-flex flex-column align-center">
-                    <MudIcon Icon="@Icons.Material.Filled.SearchOff" Style="font-size: 3rem; color: var(--mud-palette-text-secondary);" />
-                    <MudText Typo="Typo.h6" Class="mt-2">No teams found</MudText>
-                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
-                        Try adjusting your search terms
-                    </MudText>
-                </div>
-            </MudCard>
+            <EmptyState Title="No Teams Found" Message="Try adjusting your search terms." />
         }
-    </MudContainer>
-}
-else
-{
-    <MudContainer Class="d-flex justify-center align-center" Style="height: 400px;">
-        <div class="d-flex flex-column align-center">
-            <MudProgressCircular Indeterminate="true" Size="Size.Large" />
-            <MudText Typo="Typo.body2" Class="mt-4 mud-text-secondary">Loading team rosters...</MudText>
-        </div>
-    </MudContainer>
-}
-
+    }
+</PageContainer>
 <ScrollToTopButton />
 
 @code {
@@ -163,15 +148,13 @@ else
         try
         {
             teams = await TeamService.GetAllTeamsAsync();
-
             if (teams != null)
             {
                 foreach (var team in teams)
                 {
-                    // Fetch the players for the team
-                    var players = await TeamService.GetTeamRosterAsync(team.TeamId);
+                    var players =
+                        await TeamService.GetTeamRosterAsync(team.TeamId);
 
-                    // Sort the players by WinPercentage descending and then assign them
                     team.Players = players.OrderByDescending(p => p.WinPercentage).ToList();
                 }
             }
@@ -186,7 +169,6 @@ else
     {
         if (string.IsNullOrWhiteSpace(fullName))
             return "?";
-
         var parts = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length >= 2)
             return $"{parts[0][0]}{parts[1][0]}".ToUpper();
@@ -194,17 +176,5 @@ else
             return $"{parts[0][0]}".ToUpper();
 
         return "?";
-    }
-
-    private Color GetWinPercentageColor(decimal winPercentage)
-    {
-        return winPercentage switch
-        {
-            >= 75 => Color.Success,
-            >= 60 => Color.Info,
-            >= 50 => Color.Warning,
-            >= 25 => Color.Secondary,
-            _ => Color.Error
-        };
     }
 }

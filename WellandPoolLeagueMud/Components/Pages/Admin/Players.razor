@@ -3,27 +3,27 @@
 @using WellandPoolLeagueMud.Data.ViewModels
 @using WellandPoolLeagueMud.Data.Services
 @using MudBlazor
+@using WellandPoolLeagueMud.Components.Shared
 @inject ISnackbar Snackbar
 @inject IPlayerService PlayerService
 @inject ITeamService TeamService
+@inject WellandPoolLeagueMud.Data.Services.DialogService DialogService
 
 <PageTitle>Players Administration</PageTitle>
 
-<MudContainer>
-    <MudGrid Justify="Justify.Center" Spacing="4">
-        <MudItem xs="12" sm="8" md="6">
-            <MudPaper Class="pa-4">
-                <MudText Typo="Typo.h5" Class="mb-4">Add/Edit Player</MudText>
-                <MudForm>
-                    <MudGrid>
-                        @if (isLoading)
-                        {
-                            <MudItem xs="12" Class="d-flex justify-center py-8">
-                                <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
-                            </MudItem>
-                        }
-                        else
-                        {
+<PageContainer Title="Players Administration">
+    @if (isLoading)
+    {
+        <Loading Message="Loading player data..." />
+    }
+    else
+    {
+        <MudGrid Justify="Justify.Center" Spacing="4">
+            <MudItem xs="12" sm="8" md="6">
+                <MudPaper Class="pa-4">
+                    <MudText Typo="Typo.h5" Class="mb-4">Add/Edit Player</MudText>
+                    <MudForm>
+                        <MudGrid>
                             <MudItem xs="12">
                                 <MudSelect T="int?"
                                            Label="Choose Player to Edit"
@@ -116,123 +116,124 @@
                                     </AuthorizeView>
                                 }
                             </MudItem>
-                        }
-                    </MudGrid>
-                </MudForm>
-            </MudPaper>
-        </MudItem>
-
-        @if (selectedTeamPlayers is not null && selectedTeamPlayers.Any())
-        {
-            <MudItem xs="12">
-                <MudPaper Class="pa-4">
-                    <MudText Typo="Typo.h6" Class="mb-4">
-                        @(player.TeamName ?? "Selected Team") - Team Roster
-                    </MudText>
-                    <MudTable Items="selectedTeamPlayers" Dense="true" Hover="true" Striped="true">
-                        <HeaderContent>
-                            <MudTh>Player Name</MudTh>
-                            <MudTh Style="text-align: center;">Games</MudTh>
-                            <MudTh Style="text-align: center;">Wins</MudTh>
-                            <MudTh Style="text-align: center;">Losses</MudTh>
-                            <MudTh Style="text-align: center;">Win %</MudTh>
-                            <MudTh Style="text-align: center;">Actions</MudTh>
-                        </HeaderContent>
-                        <RowTemplate>
-                            <MudTd DataLabel="Player Name">
-                                <div class="d-flex align-center">
-                                    @if (context.PlayerId == player.PlayerId)
-                                    {
-                                        <MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="Variant.Filled">New</MudChip>
-                                    }
-                                    @context.FullName
-                                </div>
-                            </MudTd>
-                            <MudTd DataLabel="Games" Style="text-align: center;">@context.GamesPlayed</MudTd>
-                            <MudTd DataLabel="Wins" Style="text-align: center;">@context.GamesWon</MudTd>
-                            <MudTd DataLabel="Losses" Style="text-align: center;">@context.GamesLost</MudTd>
-                            <MudTd DataLabel="Win %" Style="text-align: center;">@context.WinPercentage.ToString("F1")%</MudTd>
-                            <MudTd DataLabel="Actions" Style="text-align: center;">
-                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                               Size="Size.Small"
-                                               Color="Color.Primary"
-                                               OnClick="@(() => EditPlayer(context))" />
-                            </MudTd>
-                        </RowTemplate>
-                    </MudTable>
+                        </MudGrid>
+                    </MudForm>
                 </MudPaper>
             </MudItem>
-        }
 
-        @if (allPlayers is not null && allPlayers.Any())
-        {
-            <MudItem xs="12">
-                <MudPaper Class="pa-4">
-                    <MudText Typo="Typo.h6" Class="mb-4">All Players</MudText>
-                    <MudTable Items="allPlayers" Dense="true" Hover="true" Striped="true" Filter="new Func<PlayerViewModel, bool>(FilterPlayers)">
-                        <ToolBarContent>
-                            <MudTextField @bind-Value="searchString" Placeholder="Search players..." Adornment="Adornment.Start"
-                                          AdornmentIcon="Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
-                            <MudSpacer />
-                            <MudSelect T="int?"
-                                       @bind-Value="teamFilter"
-                                       Label="Filter by Team"
-                                       Variant="Variant.Outlined"
-                                       Margin="Margin.Dense"
-                                       Dense="true"
-                                       Clearable="true">
-                                <MudSelectItem T="int?" Value="null">All Teams</MudSelectItem>
-                                @if (allTeams is not null)
-                                {
-                                    @foreach (var team in allTeams)
+            @if (selectedTeamPlayers is not null && selectedTeamPlayers.Any())
+            {
+                <MudItem xs="12">
+                    <MudPaper Class="pa-4">
+                        <MudText Typo="Typo.h6" Class="mb-4">
+                            @(player.TeamName ?? "Selected Team") - Team Roster
+                        </MudText>
+                        <MudTable Items="selectedTeamPlayers" Dense="true" Hover="true" Striped="true">
+                            <HeaderContent>
+                                <MudTh>Player Name</MudTh>
+                                <MudTh Style="text-align: center;">Games</MudTh>
+                                <MudTh Style="text-align: center;">Wins</MudTh>
+                                <MudTh Style="text-align: center;">Losses</MudTh>
+                                <MudTh Style="text-align: center;">Win %</MudTh>
+                                <MudTh Style="text-align: center;">Actions</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd DataLabel="Player Name">
+                                    <div class="d-flex align-center">
+                                        @if (context.PlayerId == player.PlayerId)
+                                        {
+                                            <MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="Variant.Filled">New</MudChip>
+                                        }
+                                        @context.FullName
+                                    </div>
+                                </MudTd>
+                                <MudTd DataLabel="Games" Style="text-align: center;">@context.GamesPlayed</MudTd>
+                                <MudTd DataLabel="Wins" Style="text-align: center;">@context.GamesWon</MudTd>
+                                <MudTd DataLabel="Losses" Style="text-align: center;">@context.GamesLost</MudTd>
+                                <MudTd DataLabel="Win %" Style="text-align: center;">@context.WinPercentage.ToString("F1")%</MudTd>
+                                <MudTd DataLabel="Actions" Style="text-align: center;">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                   Size="Size.Small"
+                                                   Color="Color.Primary"
+                                                   OnClick="@(() => EditPlayer(context))" />
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    </MudPaper>
+                </MudItem>
+            }
+
+            @if (allPlayers is not null && allPlayers.Any())
+            {
+                <MudItem xs="12">
+                    <MudPaper Class="pa-4">
+                        <MudText Typo="Typo.h6" Class="mb-4">All Players</MudText>
+                        <MudTable Items="allPlayers" Dense="true" Hover="true" Striped="true" Filter="new Func<PlayerViewModel, bool>(FilterPlayers)">
+                            <ToolBarContent>
+                                <MudTextField @bind-Value="searchString" Placeholder="Search players..." Adornment="Adornment.Start"
+                                              AdornmentIcon="Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+                                <MudSpacer />
+                                <MudSelect T="int?"
+                                           @bind-Value="teamFilter"
+                                           Label="Filter by Team"
+                                           Variant="Variant.Outlined"
+                                           Margin="Margin.Dense"
+                                           Dense="true"
+                                           Clearable="true">
+                                    <MudSelectItem T="int?" Value="null">All Teams</MudSelectItem>
+                                    @if (allTeams is not null)
                                     {
-                                        <MudSelectItem T="int?" Value="team.TeamId">@team.TeamName</MudSelectItem>
+                                        @foreach (var team in allTeams)
+                                        {
+                                            <MudSelectItem T="int?" Value="team.TeamId">@team.TeamName</MudSelectItem>
+                                        }
                                     }
-                                }
-                                <MudSelectItem T="int?" Value="-1">No Team</MudSelectItem>
-                            </MudSelect>
-                        </ToolBarContent>
-                        <HeaderContent>
-                            <MudTh>Player Name</MudTh>
-                            <MudTh>Team</MudTh>
-                            <MudTh Style="text-align: center;">Games</MudTh>
-                            <MudTh Style="text-align: center;">Wins</MudTh>
-                            <MudTh Style="text-align: center;">Losses</MudTh>
-                            <MudTh Style="text-align: center;">Win %</MudTh>
-                            <MudTh Style="text-align: center;">Actions</MudTh>
-                        </HeaderContent>
-                        <RowTemplate>
-                            <MudTd DataLabel="Player Name">@context.FullName</MudTd>
-                            <MudTd DataLabel="Team">
-                                @if (string.IsNullOrEmpty(context.TeamName))
-                                {
-                                    <MudChip T="string" Color="Color.Default" Size="Size.Small" Variant="Variant.Outlined">No Team</MudChip>
-                                }
-                                else
-                                {
-                                    <MudChip T="string" Color="Color.Primary" Size="Size.Small">@context.TeamName</MudChip>
-                                }
-                            </MudTd>
-                            <MudTd DataLabel="Games" Style="text-align: center;">@context.GamesPlayed</MudTd>
-                            <MudTd DataLabel="Wins" Style="text-align: center;">@context.GamesWon</MudTd>
-                            <MudTd DataLabel="Losses" Style="text-align: center;">@context.GamesLost</MudTd>
-                            <MudTd DataLabel="Win %" Style="text-align: center;">@context.WinPercentage.ToString("F1")%</MudTd>
-                            <MudTd DataLabel="Actions" Style="text-align: center;">
-                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                               Size="Size.Small"
-                                               Color="Color.Primary"
-                                               OnClick="@(() => EditPlayer(context))" />
-                            </MudTd>
-                        </RowTemplate>
-                        <PagerContent>
-                            <MudTablePager />
-                        </PagerContent>
-                    </MudTable>
-                </MudPaper>
-            </MudItem>
-        }
-    </MudGrid>
-</MudContainer>
+                                    <MudSelectItem T="int?" Value="-1">No Team</MudSelectItem>
+                                </MudSelect>
+                            </ToolBarContent>
+                            <HeaderContent>
+                                <MudTh>Player Name</MudTh>
+                                <MudTh>Team</MudTh>
+                                <MudTh Style="text-align: center;">Games</MudTh>
+                                <MudTh Style="text-align: center;">Wins</MudTh>
+                                <MudTh Style="text-align: center;">Losses</MudTh>
+                                <MudTh Style="text-align: center;">Win %</MudTh>
+                                <MudTh Style="text-align: center;">Actions</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd DataLabel="Player Name">@context.FullName</MudTd>
+                                <MudTd DataLabel="Team">
+                                    @if (string.IsNullOrEmpty(context.TeamName))
+                                    {
+                                        <MudChip T="string" Color="Color.Default" Size="Size.Small" Variant="Variant.Outlined">No Team</MudChip>
+                                    }
+                                    else
+                                    {
+                                        <MudChip T="string" Color="Color.Primary" Size="Size.Small">@context.TeamName</MudChip>
+                                    }
+                                </MudTd>
+                                <MudTd DataLabel="Games" Style="text-align: center;">@context.GamesPlayed</MudTd>
+                                <MudTd DataLabel="Wins" Style="text-align: center;">@context.GamesWon</MudTd>
+                                <MudTd DataLabel="Losses" Style="text-align: center;">@context.GamesLost</MudTd>
+                                <MudTd DataLabel="Win %" Style="text-align: center;">@context.WinPercentage.ToString("F1")%</MudTd>
+                                <MudTd DataLabel="Actions" Style="text-align: center;">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                   Size="Size.Small"
+                                                   Color="Color.Primary"
+                                                   OnClick="@(() => EditPlayer(context))" />
+                                </MudTd>
+                            </RowTemplate>
+                            <PagerContent>
+                                <MudTablePager />
+                            </PagerContent>
+                        </MudTable>
+                    </MudPaper>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+</PageContainer>
+
 
 @code {
     private PlayerViewModel player = new();
@@ -361,26 +362,34 @@
     {
         if (player.PlayerId == 0) return;
 
-        try
-        {
-            var success = await PlayerService.DeletePlayerAsync(player.PlayerId);
+        bool confirmed = await DialogService.ShowConfirmationDialog(
+            "Confirm Deletion",
+            $"Are you sure you want to delete the player '{player.FullName}'? This will also delete all of their game records."
+        );
 
-            if (success)
-            {
-                Snackbar.Add("Player deleted successfully!", Severity.Success);
-                await LoadDataAsync();
-                ResetForm();
-            }
-            else
-            {
-                Snackbar.Add("Failed to delete player. They may have game records that prevent deletion.", Severity.Error);
-            }
-        }
-        catch (Exception ex)
+        if (confirmed)
         {
-            Snackbar.Add($"Error deleting player: {ex.Message}", Severity.Error);
+            try
+            {
+                var success = await PlayerService.DeletePlayerAsync(player.PlayerId);
+                if (success)
+                {
+                    Snackbar.Add("Player deleted successfully!", Severity.Success);
+                    await LoadDataAsync();
+                    ResetForm();
+                }
+                else
+                {
+                    Snackbar.Add("Failed to delete player. They may have game records that prevent deletion.", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error deleting player: {ex.Message}", Severity.Error);
+            }
         }
     }
+
 
     private void EditPlayer(PlayerViewModel playerToEdit)
     {
@@ -399,15 +408,13 @@
 
     private bool FilterPlayers(PlayerViewModel p)
     {
-        // Search filter
         var matchesSearch = string.IsNullOrWhiteSpace(searchString) ||
-            p.FullName.Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
-            (p.TeamName?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false);
+                            p.FullName.Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
+                            (p.TeamName?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false);
 
-        // Team filter
         var matchesTeam = teamFilter == null ||
-            (teamFilter == -1 && p.TeamId == null) ||
-            p.TeamId == teamFilter;
+                          (teamFilter == -1 && p.TeamId == null) ||
+                          p.TeamId == teamFilter;
 
         return matchesSearch && matchesTeam;
     }

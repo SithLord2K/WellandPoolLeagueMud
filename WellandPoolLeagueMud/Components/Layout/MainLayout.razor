@@ -21,9 +21,9 @@
         </MudAvatar>
         <MudText Typo="Typo.h5" Class="ml-3 league-name-text">Welland Pool League</MudText>
         <MudSpacer />
-        @if (AppState.IsLoggedIn && AppState.Roles.FirstOrDefault() != null)
+        @if (AppState.IsLoggedIn && AppState.Roles.Any())
         {
-            <MudText Typo="Typo.subtitle1">Hello, @AppState.Username (@AppState.Roles.FirstOrDefault())</MudText>
+            <MudText Typo="Typo.subtitle1">Hello, @AppState.Username (@GetFriendlyRoleName(AppState.Roles.First()))</MudText>
 
             <MudMenu AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
                 <ActivatorContent>
@@ -47,53 +47,27 @@
                 </ChildContent>
             </MudMenu>
         }
-        else if (AppState.IsLoggedIn && AppState.Roles.FirstOrDefault() == null)
+        else if (AppState.IsLoggedIn)
         {
-            <MudText Typo="Typo.subtitle1">Hello, @AppState.Username (No Role)</MudText>
-
-            <MudMenu AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
-                <ActivatorContent>
-                    <MudAvatar Size="Size.Small" Color="Color.Primary" Style="margin-left: 8px; cursor: pointer;">
-                        @if (!string.IsNullOrEmpty(_userPicture))
-                        {
-                            <MudImage Src="@_userPicture" Alt="User Avatar" />
-                        }
-                        else
-                        {
-                            @_userInitials
-                        }
-                    </MudAvatar>
-                </ActivatorContent>
-                <ChildContent>
-                    <MudMenuItem Href="/profile" Icon="@Icons.Material.Filled.Person">My Profile</MudMenuItem>
-                    <MudDivider />
-                    <MudMenuItem>
-                        <LoginButton />
-                    </MudMenuItem>
-                </ChildContent>
-            </MudMenu>
+            <MudText Typo="Typo.subtitle1">Hello, @AppState.Username</MudText>
+            <LoginButton />
         }
         else
         {
             <LoginButton />
         }
     </MudAppBar>
-    <!--App Drawer-->
     <MudDrawer id="nav-drawer" @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="6">
         <NavMenu />
     </MudDrawer>
     <MudMainContent Class="pt-16 pa-4" Style="margin-top: 20px; margin-bottom: 50px;">
-        <MudPaper id="main-content-paper" Class="pa-5 ma-2" Elevation="2">
-            @if ((AppState.Roles.Contains("League_Admin") || AppState.Roles.Contains("Super_User")) && IsAdminPage())
-            {
-                <MudAlert Severity="Severity.Info" Elevation="25" Variant="Variant.Filled" Dense="true" Class="text-center mb-4">
-                    You are logged in as an Admin user. Be careful when editing data.
-                    <br />
-                    There is no deleting allowed, contact Chris Wiley if something needs to be removed.
-                </MudAlert>
-            }
-            @Body
-        </MudPaper>
+        @if ((AppState.Roles.Contains("League_Admin") || AppState.Roles.Contains("Super_User")) && IsAdminPage())
+        {
+            <MudAlert Severity="Severity.Info" Elevation="25" Variant="Variant.Filled" Dense="true" Class="text-center mb-4">
+                You are in <strong>Admin Mode</strong>. Changes made on this page can affect league data.
+            </MudAlert>
+        }
+        @Body
     </MudMainContent>
     <MudAppBar Bottom="true" Elevation="6" Dense="true">
         <MudSpacer />
@@ -130,7 +104,6 @@
     protected override async Task OnInitializedAsync()
     {
         AppState.OnChange += StateHasChanged;
-
         if (authenticationState is not null)
         {
             var state = await authenticationState;
@@ -185,6 +158,11 @@
                 _userInitials = "U";
             }
         }
+    }
+
+    private string GetFriendlyRoleName(string role)
+    {
+        return role.Replace("_", " ");
     }
 
     private bool IsAdminPage()

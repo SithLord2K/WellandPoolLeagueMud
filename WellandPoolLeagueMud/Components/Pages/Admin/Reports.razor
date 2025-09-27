@@ -1,10 +1,10 @@
 ﻿@page "/admin/reports"
 @attribute [Authorize(Roles = "League_Admin, Super_User")]
+@using WellandPoolLeagueMud.Components.Shared
 
 <PageTitle>Generate Reports</PageTitle>
 
-<MudPaper Class="pa-4" Elevation="3">
-    <MudText Typo="Typo.h5" GutterBottom="true">Report Generator</MudText>
+<PageContainer Title="Report Generator">
     <MudGrid Spacing="4">
         <MudItem xs="12" md="6">
             <MudSelect @bind-Value="_selectedReportType" Label="Select Report Type" Dense="true" Variant="Variant.Outlined">
@@ -33,19 +33,18 @@
             </MudButton>
         </MudItem>
     </MudGrid>
-</MudPaper>
+</PageContainer>
 
 @code {
     private string _selectedReportType = "Select Report Type";
     private int? _weekNumber = 1;
-
     private bool IsWeekNumberRequired => _selectedReportType == "WeeklyResults";
 
     private bool IsReadyToDownload
     {
         get
         {
-            if (string.IsNullOrEmpty(_selectedReportType))
+            if (string.IsNullOrEmpty(_selectedReportType) || _selectedReportType == "Select Report Type")
                 return false;
             if (IsWeekNumberRequired && _weekNumber is null)
                 return false;
@@ -59,7 +58,6 @@
         {
             return _selectedReportType switch
             {
-                "Select Report Type" => string.Empty,
                 "OverallTeamStandings" => "/api/reports/teamstandings",
                 "PlayerStandings" => "/api/reports/playerstandings",
                 "WeeklyResults" => $"/api/reports/weeklyresults/{_weekNumber}",

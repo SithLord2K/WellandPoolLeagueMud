@@ -4,13 +4,14 @@
 @using WellandPoolLeagueMud.Data.ViewModels
 @using WellandPoolLeagueMud.Components.Buttons
 @using MudBlazor
+@using WellandPoolLeagueMud.Components.Shared
 @inject NavigationManager NavigationManager
 @inject IScheduleService ScheduleService
 @inject ISnackbar Snackbar
 
 <PageTitle>Playoff Schedule</PageTitle>
 
-<MudContainer>
+<PageContainer Title="Playoff Schedule">
     <div class="d-flex align-center gap-4 mb-4">
         <MudDatePicker @ref="@datePicker"
                        Label="Select date to jump to that week:"
@@ -33,12 +34,7 @@
 
     @if (isLoading)
     {
-        <MudContainer Class="d-flex justify-center align-center" Style="height: 400px;">
-            <div class="d-flex flex-column align-center">
-                <MudProgressCircular Indeterminate="true" Size="Size.Large" />
-                <MudText Typo="Typo.body2" Class="mt-4 mud-text-secondary">Loading playoff schedule...</MudText>
-            </div>
-        </MudContainer>
+        <Loading Message="Loading playoff schedule..." />
     }
     else if (playoffSchedulesByWeek is not null && playoffSchedulesByWeek.Any())
     {
@@ -47,7 +43,6 @@
             var weekNumber = weekGroup.Key;
             var weekGames = weekGroup.Where(s => s.GameDate.HasValue).OrderBy(s => s.GameDate).ToList();
             var firstGameDate = weekGames.FirstOrDefault()?.GameDate;
-
             @if (firstGameDate.HasValue)
             {
                 <div id="@firstGameDate.Value.ToString("MM-dd-yyyy")">
@@ -161,10 +156,7 @@
                                     </MudTd>
                                 </RowTemplate>
                                 <NoRecordsContent>
-                                    <div class="d-flex flex-column align-center pa-4">
-                                        <MudIcon Icon="@Icons.Material.Filled.EventBusy" Style="font-size: 2rem; color: var(--mud-palette-text-secondary);" />
-                                        <MudText Typo="Typo.body2" Class="mud-text-secondary mt-2">No playoff games scheduled for this week</MudText>
-                                    </div>
+                                    <EmptyState Title="No Playoff Games" Message="No playoff games are scheduled for this week." Icon="@Icons.Material.Filled.EventBusy" />
                                 </NoRecordsContent>
                             </MudTable>
                         </MudCardContent>
@@ -191,31 +183,17 @@
             }
         }
     }
-    else if (playoffSchedulesByWeek is not null && !playoffSchedulesByWeek.Any())
+    else
     {
-        <MudCard Class="pa-6">
-            <div class="d-flex flex-column align-center">
-                <MudIcon Icon="@Icons.Material.Filled.EmojiEvents" Style="font-size: 4rem; color: var(--mud-palette-text-secondary);" />
-                <MudText Typo="Typo.h6" Class="mt-2">No Playoff Schedule Available</MudText>
-                <MudText Typo="Typo.body2" Class="mud-text-secondary text-center">
-                    The playoff schedule hasn't been created yet, or the regular season is still in progress.
-                </MudText>
-                <MudButton Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           StartIcon="@Icons.Material.Filled.Refresh"
-                           OnClick="LoadPlayoffSchedule"
-                           Class="mt-4">
-                    Refresh Schedule
-                </MudButton>
-            </div>
-        </MudCard>
+        <EmptyState Title="No Playoff Schedule Available"
+                    Message="The playoff schedule hasn't been created yet, or the regular season is still in progress."
+                    Icon="@Icons.Material.Filled.EmojiEvents" />
     }
-
-    <ScrollToTopButton />
-</MudContainer>
+</PageContainer>
+<ScrollToTopButton />
 
 @code {
-    private MudDatePicker datePicker = new();
+    private MudDatePicker? datePicker;
     private DateTime? selectedDate = DateTime.Today;
     private bool isLoading = true;
 
@@ -239,7 +217,6 @@
             if (allSchedules != null && allSchedules.Any())
             {
                 var playoffGames = allSchedules.Where(IsPlayoffGame).ToList();
-
                 playoffSchedulesByWeek = playoffGames
                     .OrderBy(s => s.WeekNumber)
                     .ThenBy(s => s.GameDate)
@@ -264,7 +241,7 @@
 
     private bool IsPlayoffGame(ScheduleViewModel schedule)
     {
-        var playoffStartDate = new DateTime(2026, 3, 24); // Example: March 24, 2026
+        var playoffStartDate = new DateTime(2026, 3, 24);
         return schedule.GameDate.HasValue && schedule.GameDate.Value.Date >= playoffStartDate.Date;
     }
 

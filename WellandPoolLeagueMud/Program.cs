@@ -49,6 +49,7 @@ try
     builder.Services.AddScoped<IPlayerUserService, PlayerUserService>();
     builder.Services.AddScoped<IScheduleGeneratorService, ScheduleGeneratorService>();
     builder.Services.AddScoped<IBarService, BarService>();
+    builder.Services.AddScoped<WellandPoolLeagueMud.Data.Services.DialogService>();
 
     builder.Services.AddDbContextFactory<WellandPoolLeagueDbContext>(options =>
     {

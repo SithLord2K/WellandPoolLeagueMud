@@ -1,0 +1,19 @@
+﻿<MudPaper Class="pa-4" Elevation="3">
+    <MudText Typo="Typo.h4" GutterBottom="true">@Title</MudText>
+    @if (!string.IsNullOrWhiteSpace(Description))
+    {
+        <MudText Class="mb-4">@Description</MudText>
+    }
+    @ChildContent
+</MudPaper>
+
+@code {
+    [Parameter]
+    public string Title { get; set; } = "Page Title";
+
+    [Parameter]
+    public string? Description { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

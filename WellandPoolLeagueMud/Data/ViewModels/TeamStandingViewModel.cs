@@ -1,4 +1,5 @@
-﻿namespace WellandPoolLeagueMud.Data.ViewModels
+﻿// WellandPoolLeagueMud/Data/ViewModels/TeamStandingViewModel.cs
+namespace WellandPoolLeagueMud.Data.ViewModels
 {
     public class TeamStandingViewModel
     {
@@ -13,5 +14,6 @@
         public int Rank { get; set; }
         public string Division { get; set; } = string.Empty;
         public int WeeksWon { get; set; }
+        public int WeeksLost { get; set; } // Add this line
     }
 }

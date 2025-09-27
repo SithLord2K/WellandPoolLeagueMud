@@ -4,24 +4,23 @@
 @using WellandPoolLeagueMud.Components.Dialogs
 @using WellandPoolLeagueMud.Data.ViewModels
 @using WellandPoolLeagueMud.Data.Services
+@using WellandPoolLeagueMud.Components.Shared
 
 @inject IAuth0ManagementService Auth0ManagementService
-@inject IDialogService DialogService
+@inject IDialogService MudDialogService
+@inject WellandPoolLeagueMud.Data.Services.DialogService DialogService
 @inject ISnackbar Snackbar
 @inject ILogger<RoleManagement> Logger
 
 <PageTitle>Role Management</PageTitle>
 
-<MudText Typo="Typo.h4" GutterBottom="true">Role Management</MudText>
-<MudText Class="mb-4">Use this page to create, edit, and delete roles in Auth0.</MudText>
-
-@if (_isLoading)
-{
-    <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
-}
-else
-{
-    <MudPaper Class="pa-4" Elevation="3">
+<PageContainer Title="Role Management" Description="Use this page to create, edit, and delete roles in Auth0.">
+    @if (_isLoading)
+    {
+        <Loading Message="Loading roles..." />
+    }
+    else
+    {
         <div class="d-flex justify-space-between align-center mb-4">
             <MudText Typo="Typo.h6">Roles (@_roles.Count)</MudText>
             <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="OpenAddRoleDialog" StartIcon="@Icons.Material.Filled.Add">
@@ -44,12 +43,11 @@ else
                 </MudTd>
             </RowTemplate>
             <NoRecordsContent>
-                @* <-- FIXED: Correct tag name *@
-                <MudText>No roles found.</MudText>
+                <EmptyState Title="No Roles Found" Message="There are no roles to display." />
             </NoRecordsContent>
         </MudTable>
-    </MudPaper>
-}
+    }
+</PageContainer>
 
 
 @code {
@@ -82,7 +80,7 @@ else
 
     private async Task OpenAddRoleDialog()
     {
-        var dialog = await DialogService.ShowAsync<RoleEditDialog>("Add New Role");
+        var dialog = await MudDialogService.ShowAsync<RoleEditDialog>("Add New Role");
         var result = await dialog.Result;
 
         if (result != null && !result.Canceled)
@@ -94,9 +92,8 @@ else
     private async Task OpenEditRoleDialog(RoleViewModel role)
     {
         var parameters = new DialogParameters { ["Role"] = role };
-        var dialog = await DialogService.ShowAsync<RoleEditDialog>($"Edit Role: {role.Name}", parameters);
+        var dialog = await MudDialogService.ShowAsync<RoleEditDialog>($"Edit Role: {role.Name}", parameters);
         var result = await dialog.Result;
-
         if (result != null && !result.Canceled)
         {
             await LoadRoles();
@@ -105,18 +102,12 @@ else
 
     private async Task DeleteRole(RoleViewModel role)
     {
-        var parameters = new DialogParameters
-        {
-            ["Message"] = $"Are you sure you want to delete the role '{role.Name}'? This cannot be undone.",
-            ["YesText"] = "Delete",
-            ["NoText"] = "Cancel",
-            ["Color"] = Color.Error
-        };
+        bool confirmed = await DialogService.ShowConfirmationDialog(
+            "Confirm Deletion",
+            $"Are you sure you want to delete the role '{role.Name}'? This action cannot be undone."
+        );
 
-        var dialog = await DialogService.ShowAsync<MudMessageBox>("Confirm Deletion", parameters);
-        var result = await dialog.Result;
-
-        if (result != null && !result.Canceled && bool.TryParse(result.Data?.ToString(), out var confirmed) && confirmed)
+        if (confirmed)
         {
             try
             {

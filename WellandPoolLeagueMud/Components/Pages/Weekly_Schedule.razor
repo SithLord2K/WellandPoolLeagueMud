@@ -4,13 +4,14 @@
 @using WellandPoolLeagueMud.Data.ViewModels
 @using WellandPoolLeagueMud.Components.Buttons
 @using MudBlazor
+@using WellandPoolLeagueMud.Components.Shared
 @inject NavigationManager NavigationManager
 @inject IScheduleService ScheduleService
 @inject ISnackbar Snackbar
 
 <PageTitle>Weekly Schedule</PageTitle>
 
-<MudContainer>
+<PageContainer Title="Weekly Schedule">
     <div class="d-flex align-center gap-4 mb-4">
         <MudDatePicker @ref="@datePicker"
                        Label="Select date to jump to that week:"
@@ -39,12 +40,7 @@
 
     @if (isLoading)
     {
-        <MudContainer Class="d-flex justify-center align-center" Style="height: 400px;">
-            <div class="d-flex flex-column align-center">
-                <MudProgressCircular Indeterminate="true" Size="Size.Large" />
-                <MudText Typo="Typo.body2" Class="mt-4 mud-text-secondary">Loading schedule...</MudText>
-            </div>
-        </MudContainer>
+        <Loading Message="Loading schedule..." />
     }
     else if (schedulesByWeek is not null && schedulesByWeek.Any())
     {
@@ -53,7 +49,6 @@
             var weekNumber = weekGroup.Key;
             var weekGames = weekGroup.Where(s => s.GameDate.HasValue).OrderBy(s => s.GameDate).ToList();
             var firstGameDate = weekGames.FirstOrDefault()?.GameDate;
-
             @if (firstGameDate.HasValue)
             {
                 <div id="@firstGameDate.Value.ToString("MM-dd-yyyy")">
@@ -170,10 +165,7 @@
                                     </MudTd>
                                 </RowTemplate>
                                 <NoRecordsContent>
-                                    <div class="d-flex flex-column align-center pa-4">
-                                        <MudIcon Icon="@Icons.Material.Filled.EventBusy" Style="font-size: 2rem; color: var(--mud-palette-text-secondary);" />
-                                        <MudText Typo="Typo.body2" Class="mud-text-secondary mt-2">No games scheduled for this week</MudText>
-                                    </div>
+                                    <EmptyState Title="No Games Scheduled" Message="No games have been scheduled for this week." Icon="@Icons.Material.Filled.EventBusy" />
                                 </NoRecordsContent>
                             </MudTable>
                         </MudCardContent>
@@ -200,34 +192,20 @@
             }
         }
     }
-    else if (schedulesByWeek is not null && !schedulesByWeek.Any())
+    else
     {
-        <MudCard Class="pa-6">
-            <div class="d-flex flex-column align-center">
-                <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Style="font-size: 4rem; color: var(--mud-palette-text-secondary);" />
-                <MudText Typo="Typo.h6" Class="mt-2">No Schedule Available</MudText>
-                <MudText Typo="Typo.body2" Class="mud-text-secondary text-center">
-                    The schedule hasn't been created yet. Check back later or contact your league administrator.
-                </MudText>
-                <MudButton Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           StartIcon="@Icons.Material.Filled.Refresh"
-                           OnClick="LoadSchedule"
-                           Class="mt-4">
-                    Refresh Schedule
-                </MudButton>
-            </div>
-        </MudCard>
+        <EmptyState Title="No Schedule Available"
+                    Message="The schedule hasn't been created yet. Check back later or contact your league administrator."
+                    Icon="@Icons.Material.Filled.CalendarMonth" />
     }
+</PageContainer>
+<ScrollToTopButton />
 
-    <ScrollToTopButton />
-</MudContainer>
-
-@code {
-    private MudDatePicker datePicker = new();
+@code
+{
+    private MudDatePicker? datePicker;
     private DateTime? selectedDate = DateTime.Today;
     private bool isLoading = true;
-
     private List<ScheduleViewModel>? allSchedules;
     private IEnumerable<IGrouping<int, ScheduleViewModel>>? schedulesByWeek;
 
@@ -301,7 +279,6 @@
                 .Where(s => s.GameDate.HasValue && s.GameDate.Value.Date >= startOfWeek && s.GameDate.Value.Date <= endOfWeek)
                 .OrderBy(s => s.GameDate)
                 .FirstOrDefault();
-
             if (currentWeekGames == null)
             {
                 currentWeekGames = schedulesByWeek

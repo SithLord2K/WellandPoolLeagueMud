@@ -8,36 +8,34 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using System.Security.Claims
 @using Auth0.ManagementApi.Models
+@using WellandPoolLeagueMud.Components.Shared
 
 @inject IAuth0ManagementService Auth0ManagementService
 @inject IPlayerUserService PlayerUserService
 @inject ISnackbar Snackbar
-@inject IDialogService DialogService
+@inject IDialogService MudDialogService
+@inject WellandPoolLeagueMud.Data.Services.DialogService DialogService
 @inject ILogger<UserManagement> Logger
 @inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>User Management</PageTitle>
 
-<MudText Typo="Typo.h4" GutterBottom="true">User Management</MudText>
-<MudText Class="mb-4">Create, delete, block, assign roles to users, and link to player profiles. Changes are saved to Auth0 immediately.</MudText>
-
-@if (_isLoading)
-{
-    <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
-    <MudText Class="mt-2">Loading users, roles, and player data...</MudText>
-}
-else if (_hasError)
-{
-    <MudAlert Severity="Severity.Error" Class="mb-4">
-        <strong>Error Loading Data:</strong> @_errorMessage
-        <MudButton Color="Color.Primary" Variant="Variant.Text" Size="Size.Small" OnClick="RefreshData" Class="ml-2">
-            Retry
-        </MudButton>
-    </MudAlert>
-}
-else if (_users is not null && _allRoles is not null)
-{
-    <MudPaper Class="pa-4" Elevation="3">
+<PageContainer Title="User Management" Description="Create, delete, block, assign roles to users, and link to player profiles. Changes are saved to Auth0 immediately.">
+    @if (_isLoading)
+    {
+        <Loading Message="Loading users, roles, and player data..." />
+    }
+    else if (_hasError)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4">
+            <strong>Error Loading Data:</strong> @_errorMessage
+            <MudButton Color="Color.Primary" Variant="Variant.Text" Size="Size.Small" OnClick="RefreshData" Class="ml-2">
+                Retry
+            </MudButton>
+        </MudAlert>
+    }
+    else if (_users is not null && _allRoles is not null)
+    {
         <div class="d-flex justify-space-between align-center mb-4">
             <MudText Typo="Typo.h6">Users (@_users.Count)</MudText>
             <div>
@@ -152,8 +150,9 @@ else if (_users is not null && _allRoles is not null)
                 </MudTd>
             </RowTemplate>
         </MudTable>
-    </MudPaper>
-}
+    }
+</PageContainer>
+
 
 @code {
     private List<UserViewModel>? _users;
@@ -193,12 +192,10 @@ else if (_users is not null && _allRoles is not null)
             var playerLinksTask = PlayerUserService.GetAllPlayerLinksAsync();
 
             await Task.WhenAll(usersTask, rolesTask, unlinkedPlayersTask, playerLinksTask);
-
             _users = (await usersTask)?.ToList();
             _allRoles = (await rolesTask)?.ToList();
             _unlinkedPlayers = await unlinkedPlayersTask;
             _userPlayerLinks = await playerLinksTask;
-
             if (_users == null || _allRoles == null)
             {
                 throw new InvalidOperationException("Failed to load users or roles.");
@@ -236,10 +233,8 @@ else if (_users is not null && _allRoles is not null)
             { x => x.Auth0UserId, user.UserId! },
             { x => x.UnlinkedPlayers, _unlinkedPlayers }
         };
-
-        var dialog = await DialogService.ShowAsync<LinkPlayerDialog>("Link Player to User", parameters);
+        var dialog = await MudDialogService.ShowAsync<LinkPlayerDialog>("Link Player to User", parameters);
         var result = await dialog.Result;
-
         if (result is { Canceled: false, Data: true })
         {
             await RefreshData();
@@ -249,18 +244,14 @@ else if (_users is not null && _allRoles is not null)
 
     private async Task UnlinkPlayer(UserViewModel user)
     {
-        var parameters = new DialogParameters
-        {
-            ["Message"] = $"Are you sure you want to unlink the player from '{user.Email}'?",
-            ["YesText"] = "Unlink",
-            ["NoText"] = "Cancel",
-            ["Color"] = Color.Warning
-        };
+        bool confirmed = await DialogService.ShowConfirmationDialog(
+            "Confirm Unlink",
+            $"Are you sure you want to unlink the player from '{user.Email}'?",
+            "Unlink",
+            Color.Warning
+        );
 
-        var dialog = await DialogService.ShowAsync<MudMessageBox>("Confirm Unlink", parameters);
-        var result = await dialog.Result;
-
-        if (result is { Canceled: false, Data: true })
+        if (confirmed)
         {
             try
             {
@@ -283,22 +274,14 @@ else if (_users is not null && _allRoles is not null)
         }
     }
 
-    // --- FIX 1: ADDING THIS MISSING METHOD ---
     private async Task DeleteUser(UserViewModel user)
     {
-        // --- FIX 2: USING CORRECT PARAMETERS FOR MESSAGE BOX ---
-        var parameters = new DialogParameters
-        {
-            ["Message"] = $"Are you sure you want to delete the user '{user.Email}'? This action cannot be undone.",
-            ["YesText"] = "Delete",
-            ["NoText"] = "Cancel",
-            ["Color"] = Color.Error
-        };
+        bool confirmed = await DialogService.ShowConfirmationDialog(
+            "Confirm Deletion",
+            $"Are you sure you want to delete the user '{user.Email}'? This action cannot be undone."
+        );
 
-        var dialog = await DialogService.ShowAsync<MudMessageBox>("Confirm Deletion", parameters);
-        var result = await dialog.Result;
-
-        if (result is { Canceled: false, Data: true })
+        if (confirmed)
         {
             try
             {
@@ -357,9 +340,8 @@ else if (_users is not null && _allRoles is not null)
         {
             { x => x.AllRoles, _allRoles }
         };
-        var dialog = await DialogService.ShowAsync<AddUserDialog>("Create New User", parameters);
+        var dialog = await MudDialogService.ShowAsync<AddUserDialog>("Create New User", parameters);
         var result = await dialog.Result;
-
         if (result is { Canceled: false })
         {
             await RefreshData();
@@ -367,6 +349,5 @@ else if (_users is not null && _allRoles is not null)
     }
 
     private string GetRoleName(string roleId) => _allRoles?.FirstOrDefault(r => r.Id == roleId)?.Name ?? "Unknown";
-
     private bool IsCurrentUser(UserViewModel user) => string.Equals(user.UserId, _currentAuth0UserId, StringComparison.OrdinalIgnoreCase);
 }

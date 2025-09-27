@@ -1,24 +1,140 @@
 ﻿@page "/"
-@inherits LayoutComponentBase
+@attribute [StreamRendering]
+@using WellandPoolLeagueMud.Data.Services
+@using WellandPoolLeagueMud.Data.ViewModels
+@using Microsoft.AspNetCore.Components
+@inject ITeamService TeamService
+@inject IScheduleService ScheduleService
+@inject ILogger<Home> Logger
 
 <PageTitle>Home</PageTitle>
 
-<MudText Typo="Typo.h3" GutterBottom="true">Welcome to the Welland Pool League.</MudText>
-<br />
-<MudText Typo="Typo.body1" GutterBottom="true">You can use the menu to view Team Rosters, Individual Player Statistics, Team Standings and Schedules.</MudText>
-<MudText Typo="Typo.body1" GutterBottom="true">All games start at 7:30pm</MudText>
-<br />
-<MudText Typo="Typo.body2" GutterBottom="true">You can download the scoresheet from the bottom of the menu, if you are logged in.</MudText>
-<br />
-<MudText Typo="Typo.body2" GutterBottom="true">You can sign up by clicking the Login button on the top right.</MudText>
-<br />
-<MudButton Href="https://www.buymeacoffee.com/wileysoftware"
-           Target="_blank"
-           Variant="Variant.Filled"
-           Color="Color.Primary"
-           StartIcon="@Icons.Material.Filled.LocalDrink"
-           Style="text-transform:none;">
-    Like the work? 
-    <br /> 
-    Buy Me a Beer!
-</MudButton>
+<MudContainer>
+    <MudText Typo="Typo.h3" GutterBottom="true">Welcome to the Welland Pool League.</MudText>
+    <MudText Typo="Typo.h5" Color="Color.Primary" GutterBottom="true">@CurrentSeason Season</MudText>
+    <br />
+
+    <MudText Typo="Typo.body1" GutterBottom="true">You can use the menu to view Team Rosters, Individual Player Statistics, Team Standings and Schedules.</MudText>
+    <MudText Typo="Typo.body1" GutterBottom="true">All games start at 7:30pm</MudText>
+    <MudText Typo="Typo.body2" Class="mt-2" GutterBottom="true">You can download the scoresheet from the bottom of the menu, if you are logged in.</MudText>
+    <MudText Typo="Typo.body2" GutterBottom="true">You can sign up by clicking the Login button on the top right.</MudText>
+    <br />
+
+    <MudGrid Spacing="4">
+        <MudItem xs="12" md="6">
+            <MudPaper Elevation="2" Class="pa-4" Style="height: 100%;">
+                <MudText Typo="Typo.h6" GutterBottom="true">Top Teams</MudText>
+                @if (topTeams == null)
+                {
+                    <MudProgressCircular Indeterminate="true" />
+                }
+                else if (!topTeams.Any(t => t.GamesPlayed > 0))
+                {
+                    <MudAlert Severity="Severity.Info">No team standings are available yet.</MudAlert>
+                }
+                else
+                {
+                    <MudList T="TeamStandingViewModel">
+                        @foreach (var team in topTeams)
+                        {
+                            <MudListItem T="TeamStandingViewModel">
+                                <MudText><strong>@team.Rank.</strong> @team.TeamName</MudText>
+                                <MudSpacer />
+                                <MudChip T="string" Color="Color.Success">@team.WeeksWon W</MudChip>
+                                <MudChip T="string" Color="Color.Error" Class="ml-1">@team.WeeksLost L</MudChip>
+                                <MudChip T="string" Color="Color.Info" Class="ml-1">@team.WinPercentage.ToString("F1")%</MudChip>
+                            </MudListItem>
+                        }
+                    </MudList>
+                }
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudPaper Elevation="2" Class="pa-4" Style="height: 100%;">
+                <MudText Typo="Typo.h6" GutterBottom="true">This Week's Games</MudText>
+                @if (upcomingGames == null)
+                {
+                    <MudProgressCircular Indeterminate="true" />
+                }
+                else if (!upcomingGames.Any())
+                {
+                    <MudText>No upcoming games for this week.</MudText>
+                }
+                else
+                {
+                    <MudList T="ScheduleViewModel">
+                        @foreach (var game in upcomingGames)
+                        {
+                            <MudListItem T="ScheduleViewModel">
+                                <MudText>@game.HomeTeamName vs @game.AwayTeamName</MudText>
+                            </MudListItem>
+                        }
+                    </MudList>
+                }
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+    <br />
+    <MudButton Href="https://www.buymeacoffee.com/wileysoftware"
+               Target="_blank"
+               Variant="Variant.Filled"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.LocalDrink"
+               Style="text-transform:none;">
+        Like the work? <br />
+        Buy Me a Beer!
+    </MudButton>
+</MudContainer>
+
+@code {
+    private string? CurrentSeason { get; set; }
+    private List<TeamStandingViewModel>? topTeams;
+    private List<ScheduleViewModel>? upcomingGames;
+
+    protected override async Task OnInitializedAsync()
+    {
+        CurrentSeason = GetCurrentSeason();
+        await LoadHomePageData();
+    }
+
+    private async Task LoadHomePageData()
+    {
+        try
+        {
+            var standings = await TeamService.GetTeamStandingsAsync();
+            topTeams = standings.OrderBy(t => t.Rank).Take(3).ToList();
+
+            var allUpcoming = await ScheduleService.GetUpcomingSchedulesAsync();
+            var today = DateTime.Today;
+            var startOfWeek = today.AddDays(-(int)today.DayOfWeek);
+            var endOfWeek = startOfWeek.AddDays(6);
+
+            upcomingGames = allUpcoming
+                .Where(g => g.GameDate.HasValue && g.GameDate.Value.Date >= startOfWeek && g.GameDate.Value.Date <= endOfWeek)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading home page data");
+        }
+    }
+
+    private string GetCurrentSeason()
+    {
+        DateTime today = DateTime.Today;
+        int year = today.Year;
+
+        // The season starts on September 1st.
+        DateTime seasonStartDate = new DateTime(year, 9, 1);
+
+        // If today's date is on or after September 1st, the new season has started.
+        if (today >= seasonStartDate)
+        {
+            return $"{year} - {year + 1}";
+        }
+        else
+        {
+            return $"{year - 1} - {year}";
+        }
+    }
+}

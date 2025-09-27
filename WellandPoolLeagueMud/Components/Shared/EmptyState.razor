@@ -1,0 +1,16 @@
+﻿<MudPaper Class="pa-4 d-flex flex-column align-center" Elevation="0">
+    <MudIcon Icon="@Icon" Size="Size.Large" Style="opacity: 0.5;" />
+    <MudText Class="mt-2" Typo="Typo.h6">@Title</MudText>
+    <MudText Typo="Typo.body2">@Message</MudText>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public string Title { get; set; } = "No Data Found";
+
+    [Parameter]
+    public string Message { get; set; } = "There is no data to display at this time.";
+
+    [Parameter]
+    public string Icon { get; set; } = Icons.Material.Filled.SearchOff;
+}

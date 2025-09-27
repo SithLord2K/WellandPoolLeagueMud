@@ -3,6 +3,7 @@
 @using WellandPoolLeagueMud.Data.ViewModels
 @using WellandPoolLeagueMud.Data.Services
 @using MudBlazor
+@using WellandPoolLeagueMud.Components.Shared
 @inject ISnackbar Snackbar
 @inject ITeamService TeamService
 @inject IPlayerService PlayerService
@@ -10,21 +11,19 @@
 
 <PageTitle>Teams Administration</PageTitle>
 
-<MudContainer>
-    <MudGrid Justify="Justify.Center" Spacing="4">
-        <MudItem xs="12" sm="8" md="6">
-            <MudPaper Class="pa-4">
-                <MudText Typo="Typo.h5" Class="mb-4">Add/Edit Team</MudText>
-                <MudForm>
-                    <MudGrid>
-                        @if (isLoading)
-                        {
-                            <MudItem xs="12" Class="d-flex justify-center py-8">
-                                <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
-                            </MudItem>
-                        }
-                        else
-                        {
+<PageContainer Title="Teams Administration">
+    @if (isLoading)
+    {
+        <Loading Message="Loading team data..." />
+    }
+    else
+    {
+        <MudGrid Justify="Justify.Center" Spacing="4">
+            <MudItem xs="12" sm="8" md="6">
+                <MudPaper Class="pa-4">
+                    <MudText Typo="Typo.h5" Class="mb-4">Add/Edit Team</MudText>
+                    <MudForm>
+                        <MudGrid>
                             <MudItem xs="12">
                                 <MudSelect T="int?"
                                            Label="Choose Team to Edit"
@@ -173,13 +172,14 @@
                                     </AuthorizeView>
                                 }
                             </MudItem>
-                        }
-                    </MudGrid>
-                </MudForm>
-            </MudPaper>
-        </MudItem>
-    </MudGrid>
-</MudContainer>
+                        </MudGrid>
+                    </MudForm>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+</PageContainer>
+
 
 @code {
     private TeamViewModel team = new();
@@ -315,11 +315,9 @@
     private async Task DeleteTeamAsync()
     {
         if (team.TeamId == 0) return;
-
         try
         {
             var success = await TeamService.DeleteTeamAsync(team.TeamId);
-
             if (success)
             {
                 Snackbar.Add("Team deleted successfully!", Severity.Success);

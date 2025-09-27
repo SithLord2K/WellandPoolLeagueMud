@@ -4,6 +4,7 @@
 @using WellandPoolLeagueMud.Components.Buttons
 @using MudBlazor
 @using System.Linq
+@using WellandPoolLeagueMud.Helpers
 @attribute [StreamRendering]
 
 <PageTitle>Player Standings</PageTitle>
@@ -39,7 +40,7 @@
                 <CellTemplate>
                     @if (context.Item.GamesPlayed > 0)
                     {
-                        <MudChip Color="@GetWinPercentageColor(context.Item.WinPercentage)" Size="Size.Small">
+                        <MudChip T="string" Color="@ColorHelper.GetWinPercentageColor(context.Item.WinPercentage)" Size="Size.Small">
                             @context.Item.WinPercentage.ToString("F1")%
                         </MudChip>
                     }
@@ -89,36 +90,20 @@ else
         try
         {
             playerStandings = await PlayerService.GetPlayerStandingsAsync();
-
-            // Apply search filter if needed
             if (!string.IsNullOrWhiteSpace(searchString))
             {
                 playerStandings = playerStandings
                     .Where(p => p.PlayerName.Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
-                               (p.TeamName?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false))
+                                (p.TeamName?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false))
                     .ToList();
             }
         }
         catch (Exception ex)
         {
-            // Handle error appropriately - you might want to inject ISnackbar for notifications
             Console.WriteLine($"Error loading player standings: {ex.Message}");
         }
     }
 
-    private Color GetWinPercentageColor(decimal winPercentage)
-    {
-        return winPercentage switch
-        {
-            >= 75 => Color.Success,
-            >= 60 => Color.Info,
-            >= 50 => Color.Warning,
-            >= 25 => Color.Secondary,
-            _ => Color.Error
-        };
-    }
-
-    // Optional: Add real-time search functionality
     private async Task OnSearchChanged(string value)
     {
         searchString = value;

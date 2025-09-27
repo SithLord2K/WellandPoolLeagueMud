@@ -146,6 +146,7 @@ namespace WellandPoolLeagueMud.Data.Services
             foreach (var team in standings)
             {
                 team.WeeksWon = allSchedules.Count(s => s.WinningTeamId == team.TeamId);
+                team.WeeksLost = allSchedules.Count(s => (s.HomeTeamId == team.TeamId || s.AwayTeamId == team.TeamId) && s.WinningTeamId != team.TeamId);
             }
 
             for (int i = 0; i < standings.Count; i++)

@@ -2,6 +2,7 @@
 @attribute [Authorize(Roles = "League_Admin, Super_User")]
 @using WellandPoolLeagueMud.Data.ViewModels
 @using WellandPoolLeagueMud.Data.Services
+@using WellandPoolLeagueMud.Components.Shared
 @inject IScheduleGeneratorService ScheduleGeneratorService
 @inject ITeamService TeamService
 @inject ISnackbar Snackbar
@@ -9,192 +10,186 @@
 
 <PageTitle>Schedule Generator</PageTitle>
 
-<MudText Typo="Typo.h4" Class="mb-4">
-    <MudIcon Icon="@Icons.Material.Filled.Schedule" Class="mr-2" />
-    Pool League Schedule Generator
-</MudText>
-@if (_isLoading)
-{
-    <MudProgressCircular Indeterminate="true" />
-    <MudText Class="mt-2">Loading teams...</MudText>
-}
-else if (_isLoadingError)
-{
-    <MudAlert Severity="Severity.Error">
-        <strong>Failed to load page data.</strong>
-        <br />
-        @_errorMessage
-    </MudAlert>
-}
-else
-{
-    <MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="mt-4">
-        <MudPaper Class="pa-6" Elevation="2">
-            @if (!_scheduleGenerated)
-            {
-                <MudGrid>
-                    <MudItem xs="12" md="6">
-                        <MudCard>
-                            <MudCardHeader>
-                                <CardHeaderContent>
-                                    <MudText Typo="Typo.h6">Generation Settings</MudText>
-                                </CardHeaderContent>
-                            </MudCardHeader>
-                            <MudCardContent>
-                                <MudDatePicker @bind-Date="_startDate"
-                                               Label="Start Date"
-                                               Required="true" Class="mb-3"
-                                               PickerVariant="PickerVariant.Dialog"
-                                               Variant="Variant.Filled" />
-                                <MudSelect T="DayOfWeek" @bind-Value="_gameDay" Dense="true" Label="Game Day" Required="true" Class="mb-3">
-                                    @foreach (DayOfWeek day in Enum.GetValues(typeof(DayOfWeek)))
-                                    {
-                                        <MudSelectItem T="DayOfWeek" Value="day">@day.ToString()</MudSelectItem>
-                                    }
-                                </MudSelect>
-                                <MudSelect T="ScheduleType" @bind-Value="_scheduleType" Dense="true" Label="Schedule Type" Required="true" Class="mb-3">
-                                    <MudSelectItem T="ScheduleType" Value="ScheduleType.DoubleRoundRobin">Double Round Robin</MudSelectItem>
-                                    <MudSelectItem T="ScheduleType" Value="ScheduleType.SingleRoundRobin">Single Round Robin</MudSelectItem>
-                                    <MudSelectItem T="ScheduleType" Value="ScheduleType.Custom">Custom (Specify weeks)</MudSelectItem>
-                                </MudSelect>
-                                @if (_scheduleType == ScheduleType.Custom)
+<PageContainer Title="Pool League Schedule Generator">
+    @if (_isLoading)
+    {
+        <Loading Message="Loading teams..." />
+    }
+    else if (_isLoadingError)
+    {
+        <MudAlert Severity="Severity.Error">
+            <strong>Failed to load page data.</strong>
+            <br />
+            @_errorMessage
+        </MudAlert>
+    }
+    else
+    {
+        @if (!_scheduleGenerated)
+        {
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudCard>
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6">Generation Settings</MudText>
+                            </CardHeaderContent>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            <MudDatePicker @bind-Date="_startDate"
+                                           Label="Start Date"
+                                           Required="true" Class="mb-3"
+                                           PickerVariant="PickerVariant.Dialog"
+                                           Variant="Variant.Filled" />
+                            <MudSelect T="DayOfWeek" @bind-Value="_gameDay" Dense="true" Label="Game Day" Required="true" Class="mb-3">
+                                @foreach (DayOfWeek day in Enum.GetValues(typeof(DayOfWeek)))
                                 {
-                                    <MudNumericField @bind-Value="_weeksToGenerate" Label="Number of Weeks" Min="1" Max="30" Required="true" Class="mb-3" />
-                                    <MudSwitch T="bool" @bind-Checked="_ensureBalanced" Label="Ensure Balanced Home/Away Games" Color="Color.Primary" />
+                                    <MudSelectItem T="DayOfWeek" Value="day">@day.ToString()</MudSelectItem>
                                 }
-                            </MudCardContent>
-                        </MudCard>
-                    </MudItem>
-                    <MudItem xs="12" md="6">
-                        <MudCard>
-                            <MudCardHeader>
-                                <CardHeaderContent>
-                                    <MudText Typo="Typo.h6">Active Teams (@_teams.Count)</MudText>
-                                </CardHeaderContent>
-                            </MudCardHeader>
-                            <MudCardContent>
-                                @if (_teams.Any())
-                                {
-                                    <MudPaper Class="pa-2" Outlined="true" Style="max-height: 200px; overflow-y: auto;">
-                                        @foreach (var team in _teams)
-                                        {
-                                            <MudChip T="string" Size="Size.Small" Class="ma-1">@team.TeamName</MudChip>
-                                        }
-                                    </MudPaper>
-                                }
-                                else
-                                {
-                                    <MudAlert Severity="Severity.Warning">No teams found.</MudAlert>
-                                }
-                            </MudCardContent>
-                        </MudCard>
-                    </MudItem>
-                    <MudItem xs="12">
-                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" StartIcon="@Icons.Material.Filled.AutoAwesome" OnClick="GenerateScheduleAsync" Disabled="_isGenerating || !_teams.Any()" FullWidth="true">
-                            @if (_isGenerating)
+                            </MudSelect>
+                            <MudSelect T="ScheduleType" @bind-Value="_scheduleType" Dense="true" Label="Schedule Type" Required="true" Class="mb-3">
+                                <MudSelectItem T="ScheduleType" Value="ScheduleType.DoubleRoundRobin">Double Round Robin</MudSelectItem>
+                                <MudSelectItem T="ScheduleType" Value="ScheduleType.SingleRoundRobin">Single Round Robin</MudSelectItem>
+                                <MudSelectItem T="ScheduleType" Value="ScheduleType.Custom">Custom (Specify weeks)</MudSelectItem>
+                            </MudSelect>
+                            @if (_scheduleType == ScheduleType.Custom)
                             {
-                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                                <text>Generating Schedule...</text>
+                                <MudNumericField @bind-Value="_weeksToGenerate" Label="Number of Weeks" Min="1" Max="30" Required="true" Class="mb-3" />
+                                <MudSwitch T="bool" @bind-Checked="_ensureBalanced" Label="Ensure Balanced Home/Away Games" Color="Color.Primary" />
+                            }
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudCard>
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6">Active Teams (@_teams.Count)</MudText>
+                            </CardHeaderContent>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            @if (_teams.Any())
+                            {
+                                <MudPaper Class="pa-2" Outlined="true" Style="max-height: 200px; overflow-y: auto;">
+                                    @foreach (var team in _teams)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Class="ma-1">@team.TeamName</MudChip>
+                                    }
+                                </MudPaper>
                             }
                             else
                             {
-                                <text>Generate Schedule</text>
+                                <MudAlert Severity="Severity.Warning">No teams found.</MudAlert>
                             }
-                        </MudButton>
-                    </MudItem>
-                </MudGrid>
-            }
-            else
-            {
-                <MudGrid>
-                    <MudItem xs="12">
-                        <MudPaper Class="pa-4 mb-4" Outlined="true">
-                            <MudText Typo="Typo.h6" Class="mb-2">Schedule Preview & Editor</MudText>
-                            <MudAlert Severity="Severity.Info" Class="mb-3">
-                                You can edit the generated schedule directly in the table below. Click on any cell to modify its value.
-                                <br />
-                                Please review the schedule for any conflicts or issues before saving.
-                                <br />
-                                <MudText Color="Color.Error" Typo="Typo.body1" Class="mt-1">This will not overwrite existing schedules!</MudText>
-                                </MudAlert>
-                            @if (_generatedSchedule.Any())
-                            {
-                                <MudText Class="mb-2">
-                                    Generated <strong>@_generatedSchedule.Count games</strong>
-                                    over <strong>@_generatedSchedule.Select(s => s.WeekNumber).Distinct().Count() weeks</strong>.
-                                </MudText>
-                            }
-                            <MudButtonGroup Class="mb-3">
-                                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="GenerateScheduleAsync" Disabled="_isGenerating || _isSaving">Regenerate</MudButton>
-                                <MudButton Variant="Variant.Filled" Color="Color.Success" StartIcon="@Icons.Material.Filled.Save" OnClick="SaveScheduleAsync" Disabled="_isSaving || _isGenerating">
-                                    @if (_isSaving)
-                                    {
-                                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                                        <text>Saving...</text>
-                                    }
-                                    else
-                                    {
-                                        <text>Save to Database</text>
-                                    }
-                                </MudButton>
-                                <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Cancel" OnClick="CancelGeneration" Disabled="_isSaving">Cancel</MudButton>
-                            </MudButtonGroup>
-                        </MudPaper>
-                    </MudItem>
-                    <MudItem xs="12">
-                        <MudDataGrid T="ScheduleViewModel"
-                                     Items="_generatedSchedule"
-                                     ReadOnly="false"
-                                     EditMode="DataGridEditMode.Cell"
-                                     Dense="true"
-                                     FixedHeader="true"
-                                     Height="600px"
-                                     SortMode="SortMode.Multiple"
-                                     Filterable="true"
-                                     FilterMode="DataGridFilterMode.ColumnFilterRow">
-                            <Columns>
-                                <PropertyColumn Property="x => x.WeekNumber" Title="Week">
-                                    <EditTemplate>
-                                        <MudNumericField @bind-Value="context.Item.WeekNumber" Min="1" />
-                                    </EditTemplate>
-                                </PropertyColumn>
-                                <PropertyColumn Property="x => x.GameDate" Title="Date" Format="ddd, MMM dd">
-                                    <EditTemplate>
-                                        <MudDatePicker Date="context.Item.GameDate" DateChanged="@((d) => context.Item.GameDate = d ?? context.Item.GameDate)" />
-                                    </EditTemplate>
-                                </PropertyColumn>
-                                <PropertyColumn Property="x => x.HomeTeamName" Title="Home Team">
-                                    <EditTemplate>
-                                        <MudSelect T="int" @bind-Value="context.Item.HomeTeamId" Dense="true">
-                                            @foreach (var team in _teams)
-                                            {
-                                                <MudSelectItem T="int" Value="team.TeamId">@team.TeamName</MudSelectItem>
-                                            }
-                                        </MudSelect>
-                                    </EditTemplate>
-                                </PropertyColumn>
-                                <PropertyColumn Property="x => x.AwayTeamName" Title="Away Team">
-                                    <EditTemplate>
-                                        <MudSelect T="int" @bind-Value="context.Item.AwayTeamId" Dense="true">
-                                            @foreach (var team in _teams)
-                                            {
-                                                <MudSelectItem T="int" Value="team.TeamId">@team.TeamName</MudSelectItem>
-                                            }
-                                        </MudSelect>
-                                    </EditTemplate>
-                                </PropertyColumn>
-                                <PropertyColumn Property="x => x.TableNumber" Title="Table #" />
-                            </Columns>
-                            <PagerContent>
-                                <MudDataGridPager T="ScheduleViewModel" PageSizeOptions="new int[] { 25, 50, 100 }" />
-                            </PagerContent>
-                        </MudDataGrid>
-                    </MudItem>
-                </MudGrid>
-            }
-        </MudPaper>
-    </MudContainer>
-}
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+                <MudItem xs="12">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" StartIcon="@Icons.Material.Filled.AutoAwesome" OnClick="GenerateScheduleAsync" Disabled="_isGenerating || !_teams.Any()" FullWidth="true">
+                        @if (_isGenerating)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            <text>Generating Schedule...</text>
+                        }
+                        else
+                        {
+                            <text>Generate Schedule</text>
+                        }
+                    </MudButton>
+                </MudItem>
+            </MudGrid>
+        }
+        else
+        {
+            <MudGrid>
+                <MudItem xs="12">
+                    <MudPaper Class="pa-4 mb-4" Outlined="true">
+                        <MudText Typo="Typo.h6" Class="mb-2">Schedule Preview & Editor</MudText>
+                        <MudAlert Severity="Severity.Info" Class="mb-3">
+                            You can edit the generated schedule directly in the table below. Click on any cell to modify its value.
+                            <br />
+                            Please review the schedule for any conflicts or issues before saving.
+                            <br />
+                            <MudText Color="Color.Error" Typo="Typo.body1" Class="mt-1">This will not overwrite existing schedules!</MudText>
+                        </MudAlert>
+                        @if (_generatedSchedule.Any())
+                        {
+                            <MudText Class="mb-2">
+                                Generated <strong>@_generatedSchedule.Count games</strong>
+                                over <strong>@_generatedSchedule.Select(s => s.WeekNumber).Distinct().Count() weeks</strong>.
+                            </MudText>
+                        }
+                        <MudButtonGroup Class="mb-3">
+                            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="GenerateScheduleAsync" Disabled="_isGenerating || _isSaving">Regenerate</MudButton>
+                            <MudButton Variant="Variant.Filled" Color="Color.Success" StartIcon="@Icons.Material.Filled.Save" OnClick="SaveScheduleAsync" Disabled="_isSaving || _isGenerating">
+                                @if (_isSaving)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                    <text>Saving...</text>
+                                }
+                                else
+                                {
+                                    <text>Save to Database</text>
+                                }
+                            </MudButton>
+                            <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Cancel" OnClick="CancelGeneration" Disabled="_isSaving">Cancel</MudButton>
+                        </MudButtonGroup>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="12">
+                    <MudDataGrid T="ScheduleViewModel"
+                                 Items="_generatedSchedule"
+                                 ReadOnly="false"
+                                 EditMode="DataGridEditMode.Cell"
+                                 Dense="true"
+                                 FixedHeader="true"
+                                 Height="600px"
+                                 SortMode="SortMode.Multiple"
+                                 Filterable="true"
+                                 FilterMode="DataGridFilterMode.ColumnFilterRow">
+                        <Columns>
+                            <PropertyColumn Property="x => x.WeekNumber" Title="Week">
+                                <EditTemplate>
+                                    <MudNumericField @bind-Value="context.Item.WeekNumber" Min="1" />
+                                </EditTemplate>
+                            </PropertyColumn>
+                            <PropertyColumn Property="x => x.GameDate" Title="Date" Format="ddd, MMM dd">
+                                <EditTemplate>
+                                    <MudDatePicker Date="context.Item.GameDate" DateChanged="@((d) => context.Item.GameDate = d ?? context.Item.GameDate)" />
+                                </EditTemplate>
+                            </PropertyColumn>
+                            <PropertyColumn Property="x => x.HomeTeamName" Title="Home Team">
+                                <EditTemplate>
+                                    <MudSelect T="int" @bind-Value="context.Item.HomeTeamId" Dense="true">
+                                        @foreach (var team in _teams)
+                                        {
+                                            <MudSelectItem T="int" Value="team.TeamId">@team.TeamName</MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                </EditTemplate>
+                            </PropertyColumn>
+                            <PropertyColumn Property="x => x.AwayTeamName" Title="Away Team">
+                                <EditTemplate>
+                                    <MudSelect T="int" @bind-Value="context.Item.AwayTeamId" Dense="true">
+                                        @foreach (var team in _teams)
+                                        {
+                                            <MudSelectItem T="int" Value="team.TeamId">@team.TeamName</MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                </EditTemplate>
+                            </PropertyColumn>
+                            <PropertyColumn Property="x => x.TableNumber" Title="Table #" />
+                        </Columns>
+                        <PagerContent>
+                            <MudDataGridPager T="ScheduleViewModel" PageSizeOptions="new int[] { 25, 50, 100 }" />
+                        </PagerContent>
+                    </MudDataGrid>
+                </MudItem>
+            </MudGrid>
+        }
+    }
+</PageContainer>
+
 
 @code {
     private bool _isLoading = true;
@@ -248,7 +243,6 @@ else
 
         _isGenerating = true;
         StateHasChanged();
-
         try
         {
             switch (_scheduleType)
@@ -299,7 +293,6 @@ else
 
         try
         {
-            // Validate we have schedules to save
             if (!_generatedSchedule.Any())
             {
                 Snackbar.Add("No schedules to save.", Severity.Warning);
@@ -307,8 +300,6 @@ else
             }
 
             Logger.LogInformation("Starting save process for {Count} generated schedules", _generatedSchedule.Count);
-
-            // Ensure all schedules have the required team names populated
             foreach (var schedule in _generatedSchedule)
             {
                 if (string.IsNullOrEmpty(schedule.HomeTeamName))
@@ -324,31 +315,24 @@ else
                 }
             }
 
-            // Save the schedules
             var savedCount = await ScheduleGeneratorService.SaveScheduleBatchAsync(_generatedSchedule);
-
             Logger.LogInformation("Successfully saved {SavedCount} schedules", savedCount);
             Snackbar.Add($"Successfully saved {savedCount} games to the database.", Severity.Success);
-
-            // Clear the generated schedule and return to the generation screen
             CancelGeneration();
         }
         catch (InvalidOperationException ex)
         {
-            // These are validation errors from your service - display them to the user
             Logger.LogError(ex, "Validation error while saving schedule: {Message}", ex.Message);
             Snackbar.Add($"Validation Error: {ex.Message}", Severity.Error);
         }
         catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
         {
-            // Database-specific errors
             Logger.LogError(ex, "Database error while saving schedule");
             var innerMessage = ex.InnerException?.Message ?? ex.Message;
             Snackbar.Add($"Database Error: {innerMessage}", Severity.Error);
         }
         catch (Exception ex)
         {
-            // Any other unexpected errors
             Logger.LogError(ex, "Unexpected error saving schedule");
             Snackbar.Add($"An unexpected error occurred while saving: {ex.Message}", Severity.Error);
         }
