@@ -1,0 +1,282 @@
+﻿@page "/profile"
+@attribute [Authorize]
+
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@using WellandPoolLeagueMud.Data.Models
+@using WellandPoolLeagueMud.Data.Services
+@using WellandPoolLeagueMud.Data.ViewModels
+@inject IUserProfileService UserProfileService
+@inject IPlayerService PlayerService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ISnackbar Snackbar
+
+<PageTitle>My Profile</PageTitle>
+
+@if (_userProfile == null)
+{
+    <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+}
+else
+{
+    <MudGrid Spacing="4">
+        <MudItem xs="12" md="4">
+            <MudPaper Class="pa-4 d-flex flex-column align-center" Elevation="3">
+                <MudAvatar Color="Color.Primary" Style="height:150px; width:150px; font-size:4rem;">
+                    @if (!string.IsNullOrEmpty(_picture))
+                    {
+                        <MudImage Src="@_picture" Alt="Profile Picture" />
+                    }
+                    else
+                    {
+                        @_initials
+                    }
+                </MudAvatar>
+                <MudText Typo="Typo.h5" Class="mt-4">@_userProfile.FirstName @_userProfile.LastName</MudText>
+                @if (!string.IsNullOrEmpty(_email))
+                {
+                    <MudText Typo="Typo.body1" Class="mud-text-secondary">@_email</MudText>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body1" Class="mud-text-secondary">@(_nickname ?? _userName ?? "User")</MudText>
+                }
+
+                @if (_registrationDateTime.HasValue)
+                {
+                    <MudText Typo="Typo.caption" Class="mt-2">Registered on: @_registrationDateTime.Value.ToShortDateString()</MudText>
+                }
+
+                <div class="d-flex flex-wrap gap-1 mt-4">
+                    @foreach (var role in _roles)
+                    {
+                        <MudChip T="string" Color="Color.Primary" Size="Size.Small">@role</MudChip>
+                    }
+                </div>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="8">
+            <MudCard Elevation="3">
+                <MudTabs Elevation="2" Rounded="true" PanelClass="pa-4">
+                    <MudTabPanel Text="Profile Details">
+                        <MudForm @ref="_form" @bind-IsValid="_isFormValid">
+                            <MudCardContent>
+                                <MudGrid>
+                                    <MudItem xs="12" sm="6">
+                                        <MudTextField @bind-Value="_userProfile.FirstName" For="@(() => _userProfile.FirstName)" Label="First Name" Variant="Variant.Outlined" />
+                                    </MudItem>
+                                    <MudItem xs="12" sm="6">
+                                        <MudTextField @bind-Value="_userProfile.LastName" For="@(() => _userProfile.LastName)" Label="Last Name" Variant="Variant.Outlined" />
+                                    </MudItem>
+                                    <MudItem xs="12">
+                                        <MudTextField @bind-Value="_userProfile.PhoneNumber" For="@(() => _userProfile.PhoneNumber)" Label="Phone Number" Variant="Variant.Outlined" />
+                                    </MudItem>
+                                    <MudItem xs="12">
+                                        <MudTextField @bind-Value="_userProfile.Bio" For="@(() => _userProfile.Bio)" Label="About Me / Bio" Variant="Variant.Outlined" Lines="4" />
+                                    </MudItem>
+                                </MudGrid>
+                            </MudCardContent>
+                            <MudCardActions Class="px-4 pb-4">
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Primary"
+                                           OnClick="SaveChanges"
+                                           Disabled="@_isSaving"
+                                           Class="ml-auto">
+                                    @if (_isSaving)
+                                    {
+                                        <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                                        <MudText Class="ms-2">Saving...</MudText>
+                                    }
+                                    else
+                                    {
+                                        <text>Save Changes</text>
+                                    }
+                                </MudButton>
+                            </MudCardActions>
+                        </MudForm>
+                    </MudTabPanel>
+                    @if (_userViewModel?.SeasonStats != null && _userViewModel.SeasonStats.Any())
+                    {
+                        var currentSeason = _userViewModel.SeasonStats.First();
+                        <MudTabPanel Text="@($"Current Season ({currentSeason.Season})")">
+                            <MudSimpleTable>
+                                <thead>
+                                    <tr>
+                                        <th>Games Played</th>
+                                        <th>Wins</th>
+                                        <th>Losses</th>
+                                        <th>Win Percentage</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>@currentSeason.GamesPlayed</td>
+                                        <td>@currentSeason.Wins</td>
+                                        <td>@currentSeason.Losses</td>
+                                        <td>@currentSeason.WinPercentage.ToString("F1")%</td>
+                                    </tr>
+                                </tbody>
+                            </MudSimpleTable>
+                        </MudTabPanel>
+
+                        @if (_userViewModel.SeasonStats.Count > 1)
+                        {
+                            <MudTabPanel Text="Past Seasons">
+                                <MudList T="PlayerSeasonStatsViewModel">
+                                    @foreach (var season in _userViewModel.SeasonStats.Skip(1))
+                                    {
+                                        <MudListItem T="PlayerSeasonStatsViewModel">
+                                            <MudCard>
+                                                <MudCardHeader>
+                                                    <CardHeaderContent>
+                                                        <MudText Typo="Typo.h6">@season.Season</MudText>
+                                                    </CardHeaderContent>
+                                                </MudCardHeader>
+                                                <MudCardContent>
+                                                    <MudSimpleTable>
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Games Played</th>
+                                                                <th>Wins</th>
+                                                                <th>Losses</th>
+                                                                <th>Win Percentage</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr>
+                                                                <td>@season.GamesPlayed</td>
+                                                                <td>@season.Wins</td>
+                                                                <td>@season.Losses</td>
+                                                                <td>@season.WinPercentage.ToString("F1")%</td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </MudSimpleTable>
+                                                </MudCardContent>
+                                            </MudCard>
+                                        </MudListItem>
+                                    }
+                                </MudList>
+                            </MudTabPanel>
+                        }
+                    }
+                </MudTabs>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+}
+
+
+@code {
+    private UserProfile? _userProfile;
+    private UserViewModel? _userViewModel;
+    private MudForm? _form;
+    private bool _isSaving = false;
+    private bool _isFormValid;
+    private string? _picture;
+    private string? _email;
+    private string? _initials;
+    private DateTime? _registrationDateTime;
+    private List<string> _roles = new();
+    private string? _nickname;
+    private string? _userName;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity is { IsAuthenticated: true })
+        {
+            _userProfile = await UserProfileService.GetOrCreateUserProfileAsync(user);
+            var auth0UserId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (auth0UserId != null)
+            {
+                _userViewModel = await PlayerService.GetPlayerProfileAsync(auth0UserId);
+            }
+
+
+            _picture = user.Claims.FirstOrDefault(c => c.Type == "picture")?.Value
+                      ?? user.Claims.FirstOrDefault(c => c.Type == "https://wpl.codersden.com/picture")?.Value
+                      ?? user.Claims.FirstOrDefault(c => c.Type.Contains("picture"))?.Value
+                      ?? user.Claims.FirstOrDefault(c => c.Type == "avatar")?.Value;
+
+            _email = user.FindFirst("https://wpl.codersden.com/email")?.Value
+                    ?? user.FindFirst(ClaimTypes.Email)?.Value
+                    ?? user.FindFirst("email")?.Value
+                    ?? user.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress")?.Value
+                    ?? user.FindFirst("sub")?.Value
+                    ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (!string.IsNullOrEmpty(_userProfile?.FirstName) && !string.IsNullOrEmpty(_userProfile?.LastName))
+            {
+                _initials = $"{_userProfile.FirstName[0]}{_userProfile.LastName[0]}".ToUpper();
+            }
+            else if (!string.IsNullOrEmpty(_userProfile?.FirstName))
+            {
+                _initials = _userProfile.FirstName[0].ToString().ToUpper();
+            }
+            else if (!string.IsNullOrEmpty(_email))
+            {
+                _initials = _email[0].ToString().ToUpper();
+            }
+            else
+            {
+                _initials = "U";
+            }
+
+            var registrationDateClaim = user.FindFirst("https://wpl.codersden.com/created_at")?.Value
+                                       ?? user.FindFirst("created_at")?.Value
+                                       ?? user.FindFirst("iat")?.Value;
+
+            if (!string.IsNullOrEmpty(registrationDateClaim))
+            {
+                try
+                {
+                    if (DateTime.TryParse(registrationDateClaim, null, System.Globalization.DateTimeStyles.RoundtripKind, out var parsedDate))
+                    {
+                        _registrationDateTime = parsedDate;
+                    }
+                    else if (long.TryParse(registrationDateClaim, out var unixTimestamp))
+                    {
+                        _registrationDateTime = DateTimeOffset.FromUnixTimeSeconds(unixTimestamp).DateTime;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error parsing registration date: {ex.Message}");
+                }
+            }
+            _nickname = user.FindFirst("nickname")?.Value;
+            _userName = user.FindFirst("name")?.Value;
+
+            _roles = user.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+        }
+    }
+
+    private async Task SaveChanges()
+    {
+        if (_userProfile is null || _form is null) return;
+        await _form.Validate();
+        if (!_isFormValid)
+        {
+            Snackbar.Add("Please fix validation errors.", Severity.Warning);
+            return;
+        }
+
+        _isSaving = true;
+        try
+        {
+            await UserProfileService.UpdateUserProfileAsync(_userProfile);
+            Snackbar.Add("Profile saved successfully!", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving profile: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+}

@@ -12,5 +12,6 @@ namespace WellandPoolLeagueMud.Data.Services
         Task<List<PlayerStandingViewModel>> GetPlayerStandingsAsync();
         Task<bool> PlayerExistsAsync(int id);
         Task<List<PlayerViewModel>> GetPlayersByTeamAsync(int teamId);
+        Task<UserViewModel> GetPlayerProfileAsync(string auth0UserId);
     }
 }

@@ -156,5 +156,39 @@ namespace WellandPoolLeagueMud.Data.Services
                 .ThenBy(p => p.LastName)
                 .ToListAsync();
         }
+
+
+        public async Task<UserViewModel> GetPlayerProfileAsync(string auth0UserId)
+        {
+            var player = await _context.Players
+                .Include(p => p.Team)
+                .Include(p => p.PlayerGames)
+                .FirstOrDefaultAsync(p => p.Auth0UserId == auth0UserId);
+
+            if (player == null)
+            {
+                return null!;
+            }
+
+            var seasonStats = player.PlayerGames
+                .GroupBy(pg => pg.GameDate.Year)
+                .Select(g => new PlayerSeasonStatsViewModel
+                {
+                    Season = $"{g.Key} - {g.Key + 1}",
+                    GamesPlayed = g.Sum(pg => pg.Wins + pg.Losses),
+                    Wins = g.Sum(pg => pg.Wins),
+                    Losses = g.Sum(pg => pg.Losses),
+                    WinPercentage = g.Sum(pg => pg.Wins + pg.Losses) > 0 ? (decimal)g.Sum(pg => pg.Wins) / g.Sum(pg => pg.Wins + pg.Losses) * 100 : 0
+                })
+                .OrderByDescending(s => s.Season)
+                .ToList();
+
+            return new UserViewModel
+            {
+                UserId = player.Auth0UserId,
+                LinkedPlayer = player,
+                SeasonStats = seasonStats
+            };
+        }
     }
 }

@@ -1,4 +1,5 @@
-﻿using WellandPoolLeagueMud.Data.Models;
+﻿using System.Collections.Generic;
+using WellandPoolLeagueMud.Data.Models;
 
 namespace WellandPoolLeagueMud.Data.ViewModels
 {
@@ -12,6 +13,8 @@ namespace WellandPoolLeagueMud.Data.ViewModels
         // Player linking properties
         public Player? LinkedPlayer { get; set; }
         public bool HasLinkedPlayer => LinkedPlayer != null;
-    }
 
+        // Add this property for season stats
+        public List<PlayerSeasonStatsViewModel> SeasonStats { get; set; } = new List<PlayerSeasonStatsViewModel>();
+    }
 }
