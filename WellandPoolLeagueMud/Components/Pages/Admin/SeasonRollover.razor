@@ -1,6 +1,7 @@
 ﻿@page "/admin/season-rollover"
 @using Microsoft.EntityFrameworkCore
 @using WellandPoolLeagueMud.Components.Dialogs
+@using WellandPoolLeagueMud.Data
 @inject IDbContextFactory<WellandPoolLeagueDbContext> DbContextFactory
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
@@ -31,11 +32,16 @@
                 @if (_tables.Any())
                 {
                     <MudGrid Spacing="2">
-                        @foreach (var table in _tables)
+                        @for (int i = 0; i < _tables.Count; i++)
                         {
-                            <MudItem xs="12" sm="6" md="4" lg="3">
-                                <MudCheckBox @bind-Checked="@table.IsSelected" T="bool" Label="@table.DisplayName" Color="Color.Primary" />
-                            </MudItem>
+                            var tableIndex = i; // Capture index for closure
+                                                <MudItem xs="12" sm="6" md="4" lg="3" @key="_tables[tableIndex].DbName">
+                                                    <MudCheckBox T="bool"
+                                                                 Value="@_tables[tableIndex].IsSelected"
+                                                                 ValueChanged="@((bool newValue) => OnCheckboxChanged(tableIndex, newValue))"
+                                                                 Label="@_tables[tableIndex].DisplayName"
+                                                                 Color="Color.Primary" />
+                                                </MudItem>
                         }
                     </MudGrid>
                 }
@@ -45,8 +51,8 @@
                 }
             </MudCardContent>
             <MudCardActions>
-                @* <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SelectAll" StartIcon="@Icons.Material.Filled.SelectAll">Select All</MudButton>
-                <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="DeselectAll" StartIcon="@Icons.Material.Filled.Deselect">Deselect All</MudBu *@tton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SelectAll" StartIcon="@Icons.Material.Filled.SelectAll">Select All</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="DeselectAll" StartIcon="@Icons.Material.Filled.Deselect">Deselect All</MudButton>
             </MudCardActions>
         </MudCard>
 
@@ -61,6 +67,9 @@
                 <MudAlert Severity="Severity.Error" Class="mb-4">
                     <strong>DANGER:</strong> This action will permanently alter the database. Always perform a full manual backup before proceeding. This cannot be undone.
                 </MudAlert>
+                <MudText Typo="Typo.body2" Class="mb-2">
+                    Selected tables: @(_tables.Count(t => t.IsSelected)) of @_tables.Count
+                </MudText>
                 <MudButton Variant="Variant.Filled"
                            Color="Color.Error"
                            OnClick="ConfirmAndExecuteScript"
@@ -89,7 +98,7 @@
                     </CardHeaderContent>
                 </MudCardHeader>
                 <MudCardContent>
-                    <MudAlert Severity="_logSeverity" Variant="Variant.Outlined">@_executionLog</MudAlert>
+                    <MudAlert Severity="_logSeverity" Variant="Variant.Outlined">@((MarkupString)_executionLog)</MudAlert>
                 </MudCardContent>
             </MudCard>
         }
@@ -102,15 +111,6 @@
     private string _executionLog = string.Empty;
     private Severity _logSeverity = Severity.Normal;
 
-    private readonly HashSet<string> _seasonSpecificTables = new()
-    {
-        "WPLMud_Bars",
-        "WPLMud_Players",
-        "WPLMud_Teams",
-        "WPLMud_PlayerGames",
-        "WPLMud_Schedules"
-    };
-
     private readonly List<string> _dependencyOrder = new()
     {
         "WPLMud_Bars",
@@ -120,21 +120,64 @@
         "WPLMud_PlayerGames"
     };
 
+    public class TableSelection
+    {
+        public string DbName { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
+        public bool IsSelected { get; set; }
+    }
+
     protected override async Task OnInitializedAsync()
     {
         await using var context = await DbContextFactory.CreateDbContextAsync();
         var excludedTables = new HashSet<string> { "WPLMud_UserProfiles" };
+        var tempTableList = new List<TableSelection>();
 
-        _tables = context.Model.GetEntityTypes()
-            .Select(e => new TableSelection
+        var allEntityTypes = context.Model.GetEntityTypes();
+
+        foreach (var entityType in allEntityTypes)
+        {
+            var tableName = entityType.GetTableName();
+            if (string.IsNullOrEmpty(tableName) || excludedTables.Contains(tableName))
             {
-                DbName = e.GetTableName()!,
-                DisplayName = e.GetTableName()!.Replace("WPLMud_", ""),
-                IsSelected = _seasonSpecificTables.Contains(e.GetTableName()!)
-            })
-            .Where(t => t.DbName != null && !excludedTables.Contains(t.DbName))
-            .OrderBy(t => t.DisplayName)
-            .ToList();
+                continue;
+            }
+
+            var newTableSelection = new TableSelection
+            {
+                DbName = tableName,
+                DisplayName = tableName.Replace("WPLMud_", ""),
+                IsSelected = false
+            };
+
+            tempTableList.Add(newTableSelection);
+        }
+
+        _tables = tempTableList.OrderBy(t => t.DisplayName).ToList();
+    }
+
+    private void OnCheckboxChanged(int index, bool newValue)
+    {
+        _tables[index].IsSelected = newValue;
+        StateHasChanged();
+    }
+
+    private void SelectAll()
+    {
+        for (int i = 0; i < _tables.Count; i++)
+        {
+            _tables[i].IsSelected = true;
+        }
+        StateHasChanged();
+    }
+
+    private void DeselectAll()
+    {
+        for (int i = 0; i < _tables.Count; i++)
+        {
+            _tables[i].IsSelected = false;
+        }
+        StateHasChanged();
     }
 
     private async Task ConfirmAndExecuteScript()
@@ -143,14 +186,13 @@
         {
             ["ContentText"] = "This will permanently alter the database and cannot be undone. Are you sure you want to proceed with the season rollover?",
             ["ButtonText"] = "Yes, Execute Now",
-            ["Color"] = Color.Error,
-            ["Title"] = "Confirm Database Execution"
+            ["Color"] = Color.Error
         };
 
         var dialog = await DialogService.ShowAsync<ConfirmExecutionDialog>("Confirm Database Execution", parameters);
         var result = await dialog.Result;
 
-        if (result!.Canceled == false && result.Data is true)
+        if (result != null && !result.Canceled && result.Data is true)
         {
             await ExecuteScript();
         }
@@ -172,18 +214,25 @@
 
         var seasonYear = DateTime.UtcNow.Year;
         var builder = new System.Text.StringBuilder();
+        var logBuilder = new System.Text.StringBuilder();
 
         builder.AppendLine("BEGIN TRANSACTION;");
         builder.AppendLine("BEGIN TRY");
+        logBuilder.AppendLine("Starting season rollover process...");
 
         foreach (var tableName in selectedTables)
         {
             var backupTableName = $"{tableName}_Season_{seasonYear}";
             builder.AppendLine($"IF OBJECT_ID('[{backupTableName}]', 'U') IS NOT NULL DROP TABLE [{backupTableName}];");
             builder.AppendLine($"SELECT * INTO [{backupTableName}] FROM [{tableName}];");
+            logBuilder.AppendLine($"&bull; Backed up <strong>{tableName}</strong> to <strong>{backupTableName}</strong>.");
         }
 
-        builder.AppendLine("UPDATE [WPLMud_Players] SET [TeamId] = NULL;");
+        if (selectedTables.Contains("WPLMud_Players"))
+        {
+            builder.AppendLine("UPDATE [WPLMud_Players] SET [TeamId] = NULL;");
+            logBuilder.AppendLine("&bull; Reset <strong>TeamId</strong> for all players.");
+        }
 
         var tablesToClear = selectedTables
             .Where(t => t != "WPLMud_Players")
@@ -196,6 +245,7 @@
             {
                 builder.AppendLine($"DELETE FROM [{tableName}];");
                 builder.AppendLine($"DBCC CHECKIDENT ('[{tableName}]', RESEED, 0);");
+                logBuilder.AppendLine($"&bull; Cleared and reseeded <strong>{tableName}</strong>.");
             }
         }
 
@@ -212,13 +262,13 @@
             await context.Database.ExecuteSqlRawAsync(builder.ToString());
 
             _logSeverity = Severity.Success;
-            _executionLog = $"Successfully completed season rollover for {seasonYear} at {DateTime.Now}.";
+            _executionLog = $"<strong>Successfully completed season rollover for {seasonYear} at {DateTime.Now}.</strong><br/>{logBuilder}";
             Snackbar.Add("Database updated successfully!", Severity.Success);
         }
         catch (Exception ex)
         {
             _logSeverity = Severity.Error;
-            _executionLog = $"An error occurred during execution: {ex.Message}";
+            _executionLog = $"<strong>An error occurred during execution:</strong><br/>{ex.Message}<br/><br/>{logBuilder}";
             Snackbar.Add("An error occurred. Check the log for details.", Severity.Error);
         }
         finally
@@ -227,30 +277,4 @@
             StateHasChanged();
         }
     }
-
-    private void SelectAll()
-    {
-        foreach (var table in _tables)
-        {
-            table.IsSelected = true;
-        }
-        StateHasChanged();
-    }
-
-    private void DeselectAll()
-    {
-        foreach (var table in _tables)
-        {
-            table.IsSelected = false;
-        }
-        StateHasChanged();
-    }
-
-    public class TableSelection
-    {
-        public string DbName { get; set; } = string.Empty;
-        public string DisplayName { get; set; } = string.Empty;
-        public bool IsSelected { get; set; }
-    }
 }
-

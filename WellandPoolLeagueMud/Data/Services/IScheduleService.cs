@@ -7,6 +7,7 @@ namespace WellandPoolLeagueMud.Data.Services
         Task<List<ScheduleViewModel>> GetAllSchedulesAsync();
         Task<ScheduleViewModel?> GetScheduleByIdAsync(int id);
         Task<ScheduleViewModel> CreateScheduleAsync(ScheduleViewModel schedule);
+        Task<List<ScheduleViewModel>> CreateScheduleBatchAsync(List<ScheduleViewModel> schedules);
         Task<ScheduleViewModel?> UpdateScheduleAsync(ScheduleViewModel schedule);
         Task<bool> DeleteScheduleAsync(int id);
         Task<List<ScheduleViewModel>> GetSchedulesByWeekAsync(int weekNumber);

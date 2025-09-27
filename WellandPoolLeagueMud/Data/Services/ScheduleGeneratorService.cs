@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
-using WellandPoolLeagueMud.Data.ViewModels;
+﻿using WellandPoolLeagueMud.Data.ViewModels;
 
 namespace WellandPoolLeagueMud.Data.Services
 {
@@ -12,6 +7,7 @@ namespace WellandPoolLeagueMud.Data.Services
         private readonly ITeamService _teamService;
         private readonly IBarService _barService;
         private readonly ILogger<ScheduleGeneratorService> _logger;
+        private readonly IScheduleService _scheduleService;
         private const int HomeAwayBalanceTolerance = 2;
         private const int MaxConsecutiveHomeGames = 3;
 
@@ -19,11 +15,12 @@ namespace WellandPoolLeagueMud.Data.Services
         private Dictionary<int, BarViewModel> _barsCache = new();
         private Dictionary<int, TeamViewModel> _teamsCache = new();
 
-        public ScheduleGeneratorService(ITeamService teamService, IBarService barService, ILogger<ScheduleGeneratorService> logger)
+        public ScheduleGeneratorService(ITeamService teamService, IBarService barService, ILogger<ScheduleGeneratorService> logger, IScheduleService scheduleService)
         {
             _teamService = teamService;
             _barService = barService;
             _logger = logger;
+            _scheduleService = scheduleService;
         }
 
         public async Task<List<ScheduleViewModel>> GenerateSingleRoundRobinScheduleAsync(DateTime startDate, DayOfWeek gameDay)
@@ -292,6 +289,49 @@ namespace WellandPoolLeagueMud.Data.Services
             return result;
         }
 
+        public async Task<int> SaveScheduleBatchAsync(List<ScheduleViewModel> scheduleItems)
+        {
+            if (scheduleItems == null || !scheduleItems.Any())
+            {
+                _logger.LogWarning("SaveScheduleBatchAsync called with empty schedule list");
+                return 0;
+            }
+
+            _logger.LogInformation("Starting to save batch of {Count} schedule items", scheduleItems.Count);
+
+            try
+            {
+                // Ensure all ScheduleIds are 0 for new entities
+                foreach (var schedule in scheduleItems)
+                {
+                    schedule.ScheduleId = 0; // Reset to 0 to ensure EF treats them as new entities
+
+                    if (schedule.HomeTeamId <= 0 || schedule.AwayTeamId <= 0)
+                    {
+                        _logger.LogError("Invalid schedule found: HomeTeamId={HomeId}, AwayTeamId={AwayId}", schedule.HomeTeamId, schedule.AwayTeamId);
+                        throw new InvalidOperationException($"Invalid schedule data: HomeTeamId={schedule.HomeTeamId}, AwayTeamId={schedule.AwayTeamId}");
+                    }
+
+                    if (!schedule.GameDate.HasValue)
+                    {
+                        _logger.LogError("Schedule missing GameDate for Week {Week}", schedule.WeekNumber);
+                        throw new InvalidOperationException($"Schedule for Week {schedule.WeekNumber} is missing GameDate");
+                    }
+                }
+
+                // Use the proper batch save method from IScheduleService
+                var savedSchedules = await _scheduleService.CreateScheduleBatchAsync(scheduleItems);
+
+                _logger.LogInformation("Successfully saved {Count} schedule items to database", savedSchedules.Count);
+                return savedSchedules.Count;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error saving schedule batch of {Count} items", scheduleItems.Count);
+                throw;
+            }
+        }
+
         #region Helper Methods
 
         private void FinalReviewAndFix(List<ScheduleViewModel> weeklyGames, List<BarViewModel> allBars, Dictionary<int, int> lastHome, Dictionary<int, int> consecutiveHome, int weekNumber)
@@ -443,12 +483,6 @@ namespace WellandPoolLeagueMud.Data.Services
             }
 
             return pairings;
-        }
-
-        public Task<int> SaveScheduleBatchAsync(List<ScheduleViewModel> scheduleItems)
-        {
-            _logger.LogInformation("Saving batch of {Count} schedule items", scheduleItems.Count);
-            return Task.FromResult(scheduleItems.Count);
         }
 
         #endregion

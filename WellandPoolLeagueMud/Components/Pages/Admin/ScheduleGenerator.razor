@@ -13,7 +13,6 @@
     <MudIcon Icon="@Icons.Material.Filled.Schedule" Class="mr-2" />
     Pool League Schedule Generator
 </MudText>
-
 @if (_isLoading)
 {
     <MudProgressCircular Indeterminate="true" />
@@ -111,6 +110,13 @@ else
                     <MudItem xs="12">
                         <MudPaper Class="pa-4 mb-4" Outlined="true">
                             <MudText Typo="Typo.h6" Class="mb-2">Schedule Preview & Editor</MudText>
+                            <MudAlert Severity="Severity.Info" Class="mb-3">
+                                You can edit the generated schedule directly in the table below. Click on any cell to modify its value.
+                                <br />
+                                Please review the schedule for any conflicts or issues before saving.
+                                <br />
+                                <MudText Color="Color.Error" Typo="Typo.body1" Class="mt-1">This will not overwrite existing schedules!</MudText>
+                                </MudAlert>
                             @if (_generatedSchedule.Any())
                             {
                                 <MudText Class="mb-2">
@@ -190,7 +196,6 @@ else
     </MudContainer>
 }
 
-
 @code {
     private bool _isLoading = true;
     private bool _isLoadingError = false;
@@ -206,7 +211,7 @@ else
     private bool _scheduleGenerated = false;
     private bool _isGenerating = false;
     private bool _isSaving = false;
-    private ScheduleValidationResult? _validationResult;
+    private WellandPoolLeagueMud.Data.ViewModels.ScheduleValidationResult? _validationResult;
 
     public enum ScheduleType
     {
@@ -270,10 +275,15 @@ else
                 Snackbar.Add("Could not generate a schedule.", Severity.Warning);
             }
         }
+        catch (InvalidOperationException ex)
+        {
+            Logger.LogError(ex, "Validation error generating schedule");
+            Snackbar.Add($"Schedule Generation Error: {ex.Message}", Severity.Error);
+        }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error generating schedule.");
-            Snackbar.Add("An error occurred while generating the schedule.", Severity.Error);
+            Logger.LogError(ex, "Unexpected error generating schedule");
+            Snackbar.Add($"An unexpected error occurred while generating the schedule: {ex.Message}", Severity.Error);
         }
         finally
         {
@@ -285,20 +295,67 @@ else
     private async Task SaveScheduleAsync()
     {
         _isSaving = true;
+        StateHasChanged();
+
         try
         {
+            // Validate we have schedules to save
+            if (!_generatedSchedule.Any())
+            {
+                Snackbar.Add("No schedules to save.", Severity.Warning);
+                return;
+            }
+
+            Logger.LogInformation("Starting save process for {Count} generated schedules", _generatedSchedule.Count);
+
+            // Ensure all schedules have the required team names populated
+            foreach (var schedule in _generatedSchedule)
+            {
+                if (string.IsNullOrEmpty(schedule.HomeTeamName))
+                {
+                    var homeTeam = _teams.FirstOrDefault(t => t.TeamId == schedule.HomeTeamId);
+                    schedule.HomeTeamName = homeTeam?.TeamName ?? $"Team {schedule.HomeTeamId}";
+                }
+
+                if (string.IsNullOrEmpty(schedule.AwayTeamName))
+                {
+                    var awayTeam = _teams.FirstOrDefault(t => t.TeamId == schedule.AwayTeamId);
+                    schedule.AwayTeamName = awayTeam?.TeamName ?? $"Team {schedule.AwayTeamId}";
+                }
+            }
+
+            // Save the schedules
             var savedCount = await ScheduleGeneratorService.SaveScheduleBatchAsync(_generatedSchedule);
-            Snackbar.Add($"{savedCount} games have been saved.", Severity.Success);
+
+            Logger.LogInformation("Successfully saved {SavedCount} schedules", savedCount);
+            Snackbar.Add($"Successfully saved {savedCount} games to the database.", Severity.Success);
+
+            // Clear the generated schedule and return to the generation screen
             CancelGeneration();
+        }
+        catch (InvalidOperationException ex)
+        {
+            // These are validation errors from your service - display them to the user
+            Logger.LogError(ex, "Validation error while saving schedule: {Message}", ex.Message);
+            Snackbar.Add($"Validation Error: {ex.Message}", Severity.Error);
+        }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
+        {
+            // Database-specific errors
+            Logger.LogError(ex, "Database error while saving schedule");
+            var innerMessage = ex.InnerException?.Message ?? ex.Message;
+            Snackbar.Add($"Database Error: {innerMessage}", Severity.Error);
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error saving schedule.");
-            Snackbar.Add("An error occurred while saving the schedule.", Severity.Error);
+            // Any other unexpected errors
+            Logger.LogError(ex, "Unexpected error saving schedule");
+            Snackbar.Add($"An unexpected error occurred while saving: {ex.Message}", Severity.Error);
         }
         finally
         {
             _isSaving = false;
+            StateHasChanged();
         }
     }
 
